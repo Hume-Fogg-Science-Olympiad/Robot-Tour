@@ -18,6 +18,22 @@ enum ConquerorCarMotionControl
 
 static float Yaw = 0;
 
+enum Directions {
+  North,
+  East,
+  South,
+  West,
+  Northeast,
+  Southeast,
+  Southwest,
+  Northwest,
+  Movement,
+  Default
+};
+
+static Directions currentDirection = North;
+static int rotations[8] = {0, 90, -180, -90, 45, 135, -135, -45};
+
 struct Application_xxx
 {
   ConquerorCarMotionControl Motion_Control;
@@ -35,15 +51,19 @@ static void ApplicationFunctionSet_ConquerorCarLinearMotionControl(ConquerorCarM
     AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_void, /*speed_A*/ 0,
                                            /*direction_B*/ direction_void, /*speed_B*/ 0, /*controlED*/ control_enable); //Motor control
     AppMPU6050getdata.MPU6050_dveGetEulerAngles(&Yaw);
-   
+    Serial.println(Yaw);
+
     is_time = millis();
   }
   if(en != directionRecord )
   {
     en = directionRecord;  
-    yaw_So = Yaw;
+    yaw_So = rotations[currentDirection];
+
+    Serial.println(yaw_So);
   }
-   
+  
+
   //加入比例常数Kp
   int R = (Yaw - yaw_So) * Kp + speed;
   if (R > UpperLimit)
