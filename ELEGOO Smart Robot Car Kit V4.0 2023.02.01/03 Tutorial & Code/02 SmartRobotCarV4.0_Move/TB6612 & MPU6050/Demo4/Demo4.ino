@@ -4,15 +4,15 @@
 #include "test.cpp"
 
 String grid[9] = {
-".-.S.-.-.",
-"| | | | |",
-".B.-.-.-.",
-"| B | B |",
-".-.B.-.-.",
-"| B | B |",
 ".-.-.-.-.",
-"|X| | B |",
-".-.-.-.-."};
+"| |XB B |",
+".-.B.-.-.",
+"| | | | |",
+".B.-.B.-.",
+"| | B | |",
+".-.B.-.B.",
+"| | | | |",
+".-.S.-.-."};
 
 DeviceDriverSet_Motor AppMotor;
 Application_xxx Application_ConquerorCarxxx0;
@@ -91,11 +91,11 @@ void setup() {
         graph[place][place - 4] = 0;
 
         if (!onLeftSide) {
-          graph[place - 4][place - 1] = 0;
+          graph[place][place - 4 - 1] = 0;
         }
 
         if (!onRightSide) {
-          graph[place - 4][place + 1] = 0;
+          graph[place][place - 4 + 1] = 0;
         }
       } else if (!onTopSide) {
         int upY = y - 2;
@@ -105,13 +105,13 @@ void setup() {
 
         if ((int) topLeftChar == 66) {
           if (!onLeftSide) {
-            graph[place - 4][place - 1] = 0;
+            graph[place][place - 4 - 1] = 0;
           }
         }
 
         if ((int) topRightChar == 66) {
           if (!onRightSide) {
-            graph[place - 4][place + 1] = 0;
+            graph[place][place - 4 + 1] = 0;
           }
         }
       }
@@ -119,11 +119,11 @@ void setup() {
         graph[place][place + 4] = 0;
 
         if (!onLeftSide) {
-          graph[place + 4][place - 1] = 0;
+          graph[place][place + 4 - 1] = 0;
         }
 
         if (!onRightSide) {
-          graph[place + 4][place + 1] = 0;
+          graph[place][place + 4 + 1] = 0;
         }
       } else if (!onBottomSide) {
         int downY = y + 2;
@@ -133,13 +133,13 @@ void setup() {
 
         if ((int) downLeftChar == 66) {
           if (!onLeftSide) {
-            graph[place + 4][place - 1] = 0;
+            graph[place][place + 4 - 1] = 0;
           }
         }
 
         if ((int) downRightChar == 66) {
           if (!onRightSide) {
-            graph[place + 4][place + 1] = 0;
+            graph[place][place + 4 + 1] = 0;
           }
         }
       }
@@ -147,11 +147,11 @@ void setup() {
         graph[place][place - 1] = 0;
 
         if (!onBottomSide) {
-          graph[place - 4][place - 1] = 0;
+          graph[place][place - 1 + 4] = 0;
         }
 
         if (!onTopSide) {
-          graph[place + 4][place - 1] = 0;
+          graph[place][place - 1 - 4] = 0;
         }
       } else if (!onLeftSide) {
         int leftX = x - 2;
@@ -161,13 +161,14 @@ void setup() {
 
         if ((int) leftUpChar == 66) {
           if (!onTopSide) {
-            graph[place + 4][place - 1] = 0;
+            Serial.println(place);
+            graph[place][place - 1 - 4] = 0;
           }
         }
 
         if ((int) leftDownChar == 66) {
           if (!onBottomSide) {
-            graph[place - 4][place - 1] = 0;
+            graph[place][place - 1 + 4] = 0;
           }
         }
       }
@@ -175,11 +176,11 @@ void setup() {
         graph[place][place + 1] = 0;
 
         if (!onBottomSide) {
-          graph[place - 4][place + 1] = 0;
+          graph[place][place + 1 - 4] = 0;
         }
 
         if (!onTopSide) {
-          graph[place + 4][place + 1] = 0;
+          graph[place][place + 1 + 4] = 0;
         }
       } else if (!onRightSide) {
         int rightX = x + 2;
@@ -189,13 +190,13 @@ void setup() {
 
         if ((int) rightUpChar == 66) {
           if (!onTopSide) {
-            graph[place + 4][place + 1] = 0;
+            graph[place][place + 1 - 4] = 0;
           }
         }
 
         if ((int) rightDownChar == 66) {
           if (!onBottomSide) {
-            graph[place - 4][place + 1] = 0;
+            graph[place][place + 1 + 4] = 0;
           }
         }
       }
