@@ -2,14 +2,14 @@
 // algorithm. The program is for adjacency matrix
 // representation of the graph
 using namespace std;
-#include <limits.h>;
 #include "DeviceDriverSet_xxx0.h"
 #include "MPU6050_getdata.h"
 
 // Number of vertices in the graph
 #define V 16
 
-static int pathArray[V][V];
+static int tempPathArray[V][V];
+static int pathArray[V*4];
 
 // A utility function to find the vertex with minimum
 // distance value, from the set of vertices not yet included
@@ -18,7 +18,7 @@ static int minDistance(int dist[], bool sptSet[])
 {
 
 	// Initialize min value
-	int min = INT_MAX, min_index;
+	int min = 100, min_index;
 
 	for (int v = 0; v < V; v++)
 		if (sptSet[v] == false && dist[v] <= min)
@@ -52,16 +52,16 @@ static void dijkstra(int graph[V][V], int src)
 
   for (int i = 0; i < V; i++) 
     for (int j = 0; j < V; j++)
-      pathArray[i][j] = -1;
+      tempPathArray[i][j] = -1;
 
 	// Initialize all distances as INFINITE and stpSet[] as
 	// false
 	for (int i = 0; i < V; i++)
-		dist[i] = INT_MAX, sptSet[i] = false;
+		dist[i] = 100, sptSet[i] = false;
 
 	// Distance of source vertex from itself is always 0
 	dist[src] = 0;
-  pathArray[src][0] = src;
+  tempPathArray[src][0] = src;
 
 	// Find shortest path for all vertices
 	for (int count = 0; count < V - 1; count++) {
@@ -82,18 +82,18 @@ static void dijkstra(int graph[V][V], int src)
 			// weight of path from src to v through u is
 			// smaller than current value of dist[v]
 			if (!sptSet[v] && graph[u][v]
-				&& dist[u] != INT_MAX
+				&& dist[u] != 100
 				&& dist[u] + graph[u][v] < dist[v]) {
           int lastIndex = -1;
           for (int j = 0; j < V; j++) {
-            if (pathArray[u][j] != -1) {
-              pathArray[v][j] = pathArray[u][j];
+            if (tempPathArray[u][j] != -1) {
+              tempPathArray[v][j] = tempPathArray[u][j];
             } else {
               lastIndex = j;
               break;
             }
           }
-          pathArray[v][lastIndex] = v;
+          tempPathArray[v][lastIndex] = v;
 
 				  dist[v] = dist[u] + graph[u][v];
       }

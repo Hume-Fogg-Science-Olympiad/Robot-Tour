@@ -5,21 +5,21 @@
 
 String grid[9] = {
 ".-.-.-.-.",
-"| |XB B |",
-".-.B.-.-.",
-"| | | | |",
-".B.-.B.-.",
-"| | B | |",
+"|X| |G| |",
 ".-.B.-.B.",
-"| | | | |",
-".-.S.-.-."};
+"| | | B |",
+".B.-.-.B.",
+"|GB | BG|",
+".-.B.-.-.",
+"| | | | S",
+".-.-.-.-."};
 
 DeviceDriverSet_Motor AppMotor;
 Application_xxx Application_ConquerorCarxxx0;
 MPU6050_getdata AppMPU6050getdata;
 int timer = 0;
 ConquerorCarMotionControl status = stop_it;
-Directions carDirections[V*2];
+Directions carDirections[20];
 
 float getTimeForDistance(float distance) {
   return distance/0.079;
@@ -27,6 +27,7 @@ float getTimeForDistance(float distance) {
 
 int src = 0;
 int target = 0;
+int gates[3] = {-1, -1, -1};
 Directions startingDirection = East;
 
 int graph[V][V] = { 
@@ -48,18 +49,27 @@ int graph[V][V] = {
 						{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 2, 0, 0, 2, 0 } }; //Connects to 14, 10 and 11
 
 void setup() {
-  for (int i = 0; i < V*2; i++)
+  for (int i = 0; i < 20; i++)
     carDirections[i] = Default;
 
+  for (int i = 0; i < V*4; i++)
+    pathArray[i] = -1;
+
   Serial.begin(9600);
+
+  delete []pathArray;
+  delete []carDirections;
+
+  for (int i = 0; i < 20; i++)
+    Serial.println(carDirections[i]);
 
   for (int y = 1; y < 9; y += 2) {
     for (int x = 1; x < 9; x += 2) {
 
       char currentChar = grid[y][x];
 
-      char upChar = grid[y - 1][x];
       char downChar = grid[y + 1][x];
+      char upChar = grid[y - 1][x];
       char leftChar = grid[y][x - 1];
       char rightChar = grid[y][x + 1];
 
@@ -161,7 +171,6 @@ void setup() {
 
         if ((int) leftUpChar == 66) {
           if (!onTopSide) {
-            Serial.println(place);
             graph[place][place - 1 - 4] = 0;
           }
         }
@@ -201,8 +210,18 @@ void setup() {
         }
       }
 
+      Serial.println(currentChar);
+
       if ((int) currentChar == 88) {
         target = place;
+      } else if ((int) currentChar == 71) {\
+
+        for (int j = 0; j < 3; j++) {
+          if (gates[j] == -1) {
+            gates[j] = place; 
+            break;
+          }
+        }
       }
     }
   }
@@ -244,6 +263,10 @@ void setup() {
       break;
   }
 
+  for (int i = 0; i < 3; i++) {
+    Serial.println(gates[i]);
+  }
+
   AppMotor.DeviceDriverSet_Motor_Init();
   AppMPU6050getdata.MPU6050_dveInit();
   delay(2000);
@@ -251,10 +274,37 @@ void setup() {
 
   dijkstra(graph, src);
 
+  int currentCounter = 0;
+  for (int i = 0; i < 3; i++) {
+    int currentGate = gates[i];
+
+    for (int j = 0; j < V; j++) {
+      if (tempPathArray[currentGate][j] == -1) break;
+
+      pathArray[currentCounter] = tempPathArray[currentGate][j];
+      currentCounter++;
+    }
+
+    for (int i = 0; i < V; i++) 
+      for (int j = 0; j < V; j++)
+        tempPathArray[i][j] = -1;
+
+    dijkstra(graph, currentGate);
+  }
+
+  for (int j = 0; j < V; j++) {
+    if (tempPathArray[target][j] == -1) break;
+
+    pathArray[currentCounter] = tempPathArray[target][j];
+    currentCounter++;
+  }  
+
+  delete graph;
+
   int lastCounter = 0;
-  for (int i = 1; i < V; i++) {
-    int currentNode = pathArray[target][i - 1];
-    int nextNode = pathArray[target][i];
+  for (int i = 1; i < V*4; i++) {
+    int currentNode = pathArray[i - 1];
+    int nextNode = pathArray[i];
 
     Serial.println(nextNode);
 
@@ -290,12 +340,6 @@ void setup() {
 
     carDirections[lastCounter] = Movement;
     lastCounter++;
-  }
-
-  Serial.println();
-
-  for (int i = 0; i < V*2; i++) {
-    if (carDirections[i] != Default) Serial.println(carDirections[i]);
   }
 }
 
