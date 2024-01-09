@@ -3,16 +3,17 @@
 #include "ApplicationFunctionSet_xxx0.cpp"
 #include "test.cpp"
 
-String grid[9] = {
-".-.-.-.-.",
-"|X| |G| |",
-".-.B.-.B.",
-"| | | B |",
-".B.-.-.B.",
-"|GB | BG|",
-".-.B.-.-.",
-"| | | | S",
-".-.-.-.-."};
+const char string_0[] PROGMEM = ".-.-.-.-.";
+const char string_1[] PROGMEM = "|X| |G| |";
+const char string_2[] PROGMEM = ".-.B.-.B.";
+const char string_3[] PROGMEM = "| | | B |";
+const char string_4[] PROGMEM = ".B.-.-.B.";
+const char string_5[] PROGMEM = "|GB | BG|";
+const char string_6[] PROGMEM = ".-.B.-.-.";
+const char string_7[] PROGMEM = "| | | | S";
+const char string_8[] PROGMEM = ".-.-.-.-.";
+
+const char *const grid[9] PROGMEM = {string_0, string_1, string_2, string_3, string_4, string_5, string_6, string_7, string_8};
 
 DeviceDriverSet_Motor AppMotor;
 Application_xxx Application_ConquerorCarxxx0;
@@ -49,19 +50,13 @@ int graph[V][V] = {
 						{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 2, 0, 0, 2, 0 } }; //Connects to 14, 10 and 11
 
 void setup() {
+  Serial.begin(9600);
+
   for (int i = 0; i < 20; i++)
     carDirections[i] = Default;
 
   for (int i = 0; i < V*4; i++)
     pathArray[i] = -1;
-
-  Serial.begin(9600);
-
-  delete []pathArray;
-  delete []carDirections;
-
-  for (int i = 0; i < 20; i++)
-    Serial.println(carDirections[i]);
 
   for (int y = 1; y < 9; y += 2) {
     for (int x = 1; x < 9; x += 2) {
@@ -305,8 +300,6 @@ void setup() {
   for (int i = 1; i < V*4; i++) {
     int currentNode = pathArray[i - 1];
     int nextNode = pathArray[i];
-
-    Serial.println(nextNode);
 
     if (nextNode == -1) break;
 
