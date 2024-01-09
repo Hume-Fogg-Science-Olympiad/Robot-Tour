@@ -5,21 +5,21 @@
 
 String grid[9] = {
 ".-.-.-.-.",
-"| |XB B |",
-".-.B.-.-.",
-"| | | | |",
-".B.-.B.-.",
-"| | B | |",
+"| B | |X|",
 ".-.B.-.B.",
+"| | B B |",
+".B.-.-.B.",
+"| B | | |",
+".-.-.-.-.",
 "| | | | |",
-".-.S.-.-."};
+".S.-.-.-."};
 
 DeviceDriverSet_Motor AppMotor;
 Application_xxx Application_ConquerorCarxxx0;
 MPU6050_getdata AppMPU6050getdata;
 int timer = 0;
 ConquerorCarMotionControl status = stop_it;
-Directions carDirections[V*2];
+Directions carDirections[20];
 
 float getTimeForDistance(float distance) {
   return distance/0.079;
@@ -48,7 +48,7 @@ int graph[V][V] = {
 						{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 2, 0, 0, 2, 0 } }; //Connects to 14, 10 and 11
 
 void setup() {
-  for (int i = 0; i < V*2; i++)
+  for (int i = 0; i < 20; i++)
     carDirections[i] = Default;
 
   Serial.begin(9600);
@@ -72,6 +72,8 @@ void setup() {
       int realX = 0.5*((float) x)-0.5;
 
       int place = (4 * realY) + realX;
+
+      Serial.println(downChar);
 
       if ((int) upChar == 83) {
         src = place;
@@ -161,7 +163,6 @@ void setup() {
 
         if ((int) leftUpChar == 66) {
           if (!onTopSide) {
-            Serial.println(place);
             graph[place][place - 1 - 4] = 0;
           }
         }
@@ -290,12 +291,6 @@ void setup() {
 
     carDirections[lastCounter] = Movement;
     lastCounter++;
-  }
-
-  Serial.println();
-
-  for (int i = 0; i < V*2; i++) {
-    if (carDirections[i] != Default) Serial.println(carDirections[i]);
   }
 }
 
