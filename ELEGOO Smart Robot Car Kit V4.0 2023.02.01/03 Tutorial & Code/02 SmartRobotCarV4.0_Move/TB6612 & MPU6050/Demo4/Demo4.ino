@@ -4,23 +4,23 @@
 #include "test.cpp"
 
 const char string_0[] PROGMEM = ".-.-.-.-.";
-const char string_1[] PROGMEM = "|X| |G| |";
-const char string_2[] PROGMEM = ".-.B.-.B.";
-const char string_3[] PROGMEM = "| | | B |";
-const char string_4[] PROGMEM = ".B.-.-.B.";
-const char string_5[] PROGMEM = "|GB | BG|";
-const char string_6[] PROGMEM = ".-.B.-.-.";
-const char string_7[] PROGMEM = "| | | | S";
-const char string_8[] PROGMEM = ".-.-.-.-.";
+const char string_1[] PROGMEM = "| |XBGB |";
+const char string_2[] PROGMEM = ".-.B.-.-.";
+const char string_3[] PROGMEM = "| | | | |";
+const char string_4[] PROGMEM = ".B.-.B.-.";
+const char string_5[] PROGMEM = "|G| B |G|";
+const char string_6[] PROGMEM = ".-.B.-.B.";
+const char string_7[] PROGMEM = "| | | | |";
+const char string_8[] PROGMEM = ".-.S.-.-.";
 
-const char *const grid[9] PROGMEM = {string_0, string_1, string_2, string_3, string_4, string_5, string_6, string_7, string_8};
+const char *const grid[] PROGMEM = {string_0, string_1, string_2, string_3, string_4, string_5, string_6, string_7, string_8};
 
 DeviceDriverSet_Motor AppMotor;
 Application_xxx Application_ConquerorCarxxx0;
 MPU6050_getdata AppMPU6050getdata;
 int timer = 0;
 ConquerorCarMotionControl status = stop_it;
-Directions carDirections[20];
+Directions* carDirections = (Directions*)malloc((V*4) * sizeof(int));
 
 float getTimeForDistance(float distance) {
   return distance/0.079;
@@ -31,28 +31,33 @@ int target = 0;
 int gates[3] = {-1, -1, -1};
 Directions startingDirection = East;
 
-int graph[V][V] = { 
-            { 0, 2, 0, 0, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, //Connects to 1, 4, and 5
-						{ 2, 0, 2, 0, 3, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, //Connects to 0, 5, 4, 6 and 2
-						{ 0, 2, 0, 2, 0, 3, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0 }, //Connects to 1, 6, 3, 5, and 7
-						{ 0, 0, 2, 0, 0, 0, 3, 2, 0, 0, 0, 0, 0, 0, 0, 0 }, //Connects to 2, 7, and 6
-						{ 2, 3, 0, 0, 0, 2, 0, 0, 2, 3, 0, 0, 0, 0, 0, 0 }, //Connects to 0, 5, 1, 9 and 8
-						{ 3, 2, 3, 0, 2, 0, 2, 0, 3, 2, 3, 0, 0, 0, 0, 0 }, //Connects to 4, 9, 1, 0, 2, 8, 10 and 6
-						{ 0, 3, 2, 3, 0, 2, 0, 2, 0, 3, 2, 3, 0, 0, 0, 0 }, //Connects to 2, 5, 10, 1, 3, 9, 11 and 7
-						{ 0, 0, 3, 2, 0, 0, 2, 0, 0, 0, 3, 2, 0, 0, 0, 0 }, //Connects to 3, 6, 2, 10 and 11
-						{ 0, 0, 0, 0, 2, 3, 0, 0, 0, 2, 0, 0, 2, 3, 0, 0 }, //Connects to 12, 9, 5, 13 and 4
-						{ 0, 0, 0, 0, 3, 2, 3, 0, 2, 0, 2, 0, 3, 2, 3, 0 }, //Connects to 5, 8, 14, 4, 6, 12, 13 and 10
-						{ 0, 0, 0, 0, 0, 3, 2, 3, 0, 2, 0, 2, 0, 3, 2, 3 }, //Connects to 9, 14, 11, 5, 7, 13, 15 and 6
-						{ 0, 0, 0, 0, 0, 0, 3, 2, 0, 0, 2, 0, 0, 0, 3, 2 }, //Connects to 10, 15, 6, 14 and 7
-						{ 0, 0, 0, 0, 0, 0, 0, 0, 2, 3, 0, 0, 0, 2, 0, 0 }, //Connects to 8, 9 and 13
-						{ 0, 0, 0, 0, 0, 0, 0, 0, 3, 2, 3, 0, 2, 0, 2, 0 }, //Connects to 12, 9, 8, 10 and 14
-						{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 2, 3, 0, 2, 0, 2 }, //Connects to 13, 10, 9, 11 and 15
-						{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 2, 0, 0, 2, 0 } }; //Connects to 14, 10 and 11
+int (*graph)[V] = malloc(sizeof(int[V][V]));
+char buffer[0];
+bool onBottomSide;
+bool onTopSide;
+char currentChar;
+char leftChar;
+char rightChar;
+char downChar;
+char upChar;
+int place;
+bool onLeftSide;
+bool onRightSide;
+
+int currentTime = 0;
+
+int formerCounter = -1;
+int counter = 0;
+bool finished = false;
 
 void setup() {
   Serial.begin(9600);
 
-  for (int i = 0; i < 20; i++)
+  for (int i = 0; i < V; i++) 
+    for (int j = 0; j < V; j++)
+      graph[i][j] = 0;
+
+  for (int i = 0; i < V*4; i++)
     carDirections[i] = Default;
 
   for (int i = 0; i < V*4; i++)
@@ -61,22 +66,35 @@ void setup() {
   for (int y = 1; y < 9; y += 2) {
     for (int x = 1; x < 9; x += 2) {
 
-      char currentChar = grid[y][x];
+      strcpy_P(buffer, (char *)pgm_read_ptr(&(grid[y])));  // Necessary casts and dereferencing, just copy.
+      currentChar = buffer[x];
 
-      char downChar = grid[y + 1][x];
-      char upChar = grid[y - 1][x];
-      char leftChar = grid[y][x - 1];
-      char rightChar = grid[y][x + 1];
 
-      bool onLeftSide = x - 2 < 0;
-      bool onRightSide = x + 2 >= 9;
-      bool onTopSide = y - 2 < 0;
-      bool onBottomSide = y + 2 >= 9;
+      leftChar = buffer[x - 1];
+      rightChar = buffer[x + 1];
 
-      int realY = 0.5*((float) y)-0.5;
-      int realX = 0.5*((float) x)-0.5;
+      strcpy_P(buffer, (char *)pgm_read_ptr(&(grid[y + 1])));  // Necessary casts and dereferencing, just copy.
+      downChar = buffer[x];
 
-      int place = (4 * realY) + realX;
+      strcpy_P(buffer, (char *)pgm_read_ptr(&(grid[y - 1])));  // Necessary casts and dereferencing, just copy.
+      upChar = buffer[x];
+
+      onLeftSide = x - 2 < 0;
+      onRightSide = x + 2 >= 9;
+      onTopSide = y - 2 < 0;
+      onBottomSide = y + 2 >= 9;
+
+      place = (4 * (0.5*((float) y)-0.5)) + (0.5*((float) x)-0.5);
+
+      if (!onLeftSide) graph[place][place - 1] = 2;
+      if (!onRightSide) graph[place][place + 1] = 2;
+      if (!onTopSide) graph[place][place - 4] = 2;
+      if (!onBottomSide) graph[place][place + 4] = 2;
+
+      if (!onLeftSide && !onTopSide) graph[place][place - 1 - 4] = 3;
+      if (!onLeftSide && !onBottomSide) graph[place][place - 1 + 4] = 3;
+      if (!onRightSide && !onTopSide) graph[place][place + 1 - 4] = 3;
+      if (!onRightSide && !onBottomSide) graph[place][place + 1 + 4] = 3;
 
       if ((int) upChar == 83) {
         src = place;
@@ -92,6 +110,8 @@ void setup() {
         startingDirection = West;
       }
 
+      Serial.println(upChar);
+
       if ((int) upChar == 66) {
         graph[place][place - 4] = 0;
 
@@ -103,10 +123,9 @@ void setup() {
           graph[place][place - 4 + 1] = 0;
         }
       } else if (!onTopSide) {
-        int upY = y - 2;
-        
-        char topLeftChar = grid[upY][x - 1];
-        char topRightChar = grid[upY][x + 1];
+        strcpy_P(buffer, (char *)pgm_read_ptr(&(grid[y - 2])));  // Necessary casts and dereferencing, just copy.
+        char topLeftChar = buffer[x - 1];
+        char topRightChar = buffer[x + 1];
 
         if ((int) topLeftChar == 66) {
           if (!onLeftSide) {
@@ -120,6 +139,7 @@ void setup() {
           }
         }
       }
+
       if ((int) downChar == 66) {
         graph[place][place + 4] = 0;
 
@@ -131,10 +151,9 @@ void setup() {
           graph[place][place + 4 + 1] = 0;
         }
       } else if (!onBottomSide) {
-        int downY = y + 2;
-        
-        char downLeftChar = grid[downY][x - 1];
-        char downRightChar = grid[downY][x + 1];
+        strcpy_P(buffer, (char *)pgm_read_ptr(&(grid[y + 2])));  // Necessary casts and dereferencing, just copy.
+        char downLeftChar = buffer[x - 1];
+        char downRightChar = buffer[x + 1];
 
         if ((int) downLeftChar == 66) {
           if (!onLeftSide) {
@@ -159,10 +178,11 @@ void setup() {
           graph[place][place - 1 - 4] = 0;
         }
       } else if (!onLeftSide) {
-        int leftX = x - 2;
-        
-        char leftUpChar = grid[y - 1][leftX];
-        char leftDownChar = grid[y + 1][leftX];
+        strcpy_P(buffer, (char *)pgm_read_ptr(&(grid[y - 1])));  // Necessary casts and dereferencing, just copy.
+        char leftUpChar = buffer[x - 2];
+
+        strcpy_P(buffer, (char *)pgm_read_ptr(&(grid[y + 1])));  // Necessary casts and dereferencing, just copy.
+        char leftDownChar = buffer[x - 2];
 
         if ((int) leftUpChar == 66) {
           if (!onTopSide) {
@@ -187,10 +207,11 @@ void setup() {
           graph[place][place + 1 + 4] = 0;
         }
       } else if (!onRightSide) {
-        int rightX = x + 2;
-        
-        char rightUpChar = grid[y - 1][rightX];
-        char rightDownChar = grid[y + 1][rightX];
+        strcpy_P(buffer, (char *)pgm_read_ptr(&(grid[y - 1])));  // Necessary casts and dereferencing, just copy.
+        char rightUpChar = buffer[x + 2];
+
+        strcpy_P(buffer, (char *)pgm_read_ptr(&(grid[y + 1])));  // Necessary casts and dereferencing, just copy.
+        char rightDownChar = buffer[x + 2];
 
         if ((int) rightUpChar == 66) {
           if (!onTopSide) {
@@ -205,12 +226,9 @@ void setup() {
         }
       }
 
-      Serial.println(currentChar);
-
       if ((int) currentChar == 88) {
         target = place;
-      } else if ((int) currentChar == 71) {\
-
+      } else if ((int) currentChar == 71) {
         for (int j = 0; j < 3; j++) {
           if (gates[j] == -1) {
             gates[j] = place; 
@@ -220,8 +238,6 @@ void setup() {
       }
     }
   }
-
-  currentDirection = startingDirection;
 
   switch (startingDirection) {
     case South:
@@ -233,6 +249,8 @@ void setup() {
       rotations[5] = -45;
       rotations[6] = 45;
       rotations[7] = 135;
+
+      currentDirection = South;
       break;
     case West:  
       rotations[0] = 90;
@@ -243,6 +261,8 @@ void setup() {
       rotations[5] = -135;
       rotations[6] = -45;
       rotations[7] = 45;
+
+      currentDirection = West;
       break;
     case East:
       rotations[0] = -90;
@@ -253,13 +273,12 @@ void setup() {
       rotations[5] = 45;
       rotations[6] = 135;
       rotations[7] = -135;
+
+      currentDirection = East;
       break;
     default:
+      currentDirection = North;
       break;
-  }
-
-  for (int i = 0; i < 3; i++) {
-    Serial.println(gates[i]);
   }
 
   AppMotor.DeviceDriverSet_Motor_Init();
@@ -269,23 +288,75 @@ void setup() {
 
   dijkstra(graph, src);
 
+  int lowest = -1;
   int currentCounter = 0;
+  int lowestIndex = 0;
   for (int i = 0; i < 3; i++) {
     int currentGate = gates[i];
 
-    for (int j = 0; j < V; j++) {
-      if (tempPathArray[currentGate][j] == -1) break;
-
-      pathArray[currentCounter] = tempPathArray[currentGate][j];
-      currentCounter++;
+    if (lowest = -1) {
+      lowest = currentGate;
+      lowestIndex = i;
+    } else if (dist[lowest] > dist[currentGate]) {
+      lowest = currentGate;
+      lowestIndex = i;
     }
-
-    for (int i = 0; i < V; i++) 
-      for (int j = 0; j < V; j++)
-        tempPathArray[i][j] = -1;
-
-    dijkstra(graph, currentGate);
   }
+  gates[lowestIndex] = -1;
+
+  for (int j = 0; j < V; j++) {
+    if (tempPathArray[lowest][j] == -1) break;
+
+    pathArray[currentCounter] = tempPathArray[lowest][j];
+    currentCounter++;
+  }
+
+  dijkstra(graph, lowest);
+
+  lowest = -1;
+  for (int i = 0; i < 3; i++) {
+    int currentGate = gates[i];
+
+    if (currentGate == -1) continue;
+
+    if (lowest = -1) {
+      lowest = currentGate;
+      lowestIndex = i;
+    } else if (dist[lowest] > dist[currentGate]) {
+      lowest = currentGate;
+      lowestIndex = i;
+    }
+  }
+
+  gates[lowestIndex] = -1;
+
+  for (int j = 0; j < V; j++) {
+    if (tempPathArray[lowest][j] == -1) break;
+
+    pathArray[currentCounter] = tempPathArray[lowest][j];
+    currentCounter++;
+  }
+
+  dijkstra(graph, lowest);
+
+  for (int i = 0; i < 3; i++) {
+    int currentGate = gates[i];
+    if (currentGate != -1) {
+      lowest = currentGate;
+      break;
+    } 
+  }
+
+  for (int j = 0; j < V; j++) {
+    if (tempPathArray[lowest][j] == -1) break;
+
+    pathArray[currentCounter] = tempPathArray[lowest][j];
+    currentCounter++;
+  }
+
+  dijkstra(graph, lowest);
+
+  free(graph);
 
   for (int j = 0; j < V; j++) {
     if (tempPathArray[target][j] == -1) break;
@@ -294,12 +365,13 @@ void setup() {
     currentCounter++;
   }  
 
-  delete graph;
-
   int lastCounter = 0;
+  int tempDirection = startingDirection;
   for (int i = 1; i < V*4; i++) {
     int currentNode = pathArray[i - 1];
     int nextNode = pathArray[i];
+
+    Serial.println(nextNode);
 
     if (nextNode == -1) break;
 
@@ -322,18 +394,33 @@ void setup() {
       orientation = Northwest;
     } else if (difference == -5) {
       orientation = Southeast;
+    } else if (difference == 0) {
+      continue;
     }
 
-    if (orientation != startingDirection) {
+    if (orientation != tempDirection) {
       carDirections[lastCounter] = orientation;
 
       lastCounter++;
-      startingDirection = orientation;
+      tempDirection = orientation;
     }
 
     carDirections[lastCounter] = Movement;
     lastCounter++;
   }
+
+  currentDirection = startingDirection;
+
+  free(pathArray);
+
+  for (int i = 0; i < V*4; i++) {
+    if (carDirections[i] < 0) break;
+    Serial.println(carDirections[i]);
+  }
+
+  Serial.println();
+  counter = 0;
+  formerCounter = -1;
 }
 
 void turn(Directions direction) {
@@ -352,13 +439,13 @@ void turn(Directions direction) {
   bool turnDirection = Yaw < desiredYaw;
   while (abs(Yaw - desiredYaw) > 3) {
     if (turnDirection) {
-      AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_back, /*speed_A*/ 75,
-                                             /*direction_B*/ direction_just, /*speed_B*/ 75, /*controlED*/ control_enable); //Motor control
+      AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_back, /*speed_A*/ 100,
+                                             /*direction_B*/ direction_just, /*speed_B*/ 100, /*controlED*/ control_enable); //Motor control
       
       Serial.println(Yaw);
     } else if (!turnDirection) {
-      AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_just, /*speed_A*/ 75,
-                                             /*direction_B*/ direction_back, /*speed_B*/ 75, /*controlED*/ control_enable); //Motor control
+      AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_just, /*speed_A*/ 100,
+                                             /*direction_B*/ direction_back, /*speed_B*/ 100, /*controlED*/ control_enable); //Motor control
       Serial.println(Yaw);
     }
     AppMPU6050getdata.MPU6050_dveGetEulerAngles(&Yaw);
@@ -368,11 +455,6 @@ void turn(Directions direction) {
                                          /*direction_B*/ direction_void, /*speed_B*/ 0, /*controlED*/ control_enable); //Motor control
 }
 
-int currentTime = 0;
-
-int formerCounter = -1;
-int counter = 0;
-bool finished = false;
 void loop() {
   ApplicationFunctionSet_ConquerorCarMotionControl(status, 250);
 
@@ -387,7 +469,9 @@ void loop() {
   if (counter != formerCounter) {
     formerCounter = counter;
 
+    Serial.println(counter);
     Directions direction = carDirections[counter];
+    Serial.println(direction);
     switch (direction) {
       case Movement:
         status = Forward;

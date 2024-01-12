@@ -19,16 +19,16 @@ enum ConquerorCarMotionControl
 static float Yaw = 0;
 
 enum Directions {
-  North,
-  East,
-  South,
-  West,
-  Northeast,
-  Southeast,
-  Southwest,
-  Northwest,
-  Movement,
-  Default
+  North,      //(0)
+  East,       //(1)
+  South,      //(2)
+  West,       //(3)
+  Northeast,  //(4)
+  Southeast,  //(5)
+  Southwest,  //(6)
+  Northwest,  //(7)
+  Movement,   //(8)
+  Default     //(9)
 };
 
 static Directions currentDirection = North;
@@ -59,7 +59,7 @@ static void ApplicationFunctionSet_ConquerorCarLinearMotionControl(ConquerorCarM
   {
     en = directionRecord;  
     yaw_So = rotations[currentDirection];
-
+    
     Serial.println(yaw_So);
   }
   

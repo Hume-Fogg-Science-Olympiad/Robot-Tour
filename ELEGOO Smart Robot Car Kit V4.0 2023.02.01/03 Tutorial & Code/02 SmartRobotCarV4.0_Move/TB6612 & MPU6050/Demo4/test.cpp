@@ -9,7 +9,11 @@ using namespace std;
 #define V 16
 
 static int tempPathArray[V][V];
-static int pathArray[V*4];
+static int* pathArray = (int*)malloc((V*4) * sizeof(int));
+
+static int dist[V]; // The output array. dist[i] will hold the
+			// shortest
+// distance from src to i
 
 // A utility function to find the vertex with minimum
 // distance value, from the set of vertices not yet included
@@ -41,10 +45,6 @@ static void printSolution(int dist[])
 // adjacency matrix representation
 static void dijkstra(int graph[V][V], int src)
 {
-	int dist[V]; // The output array. dist[i] will hold the
-				// shortest
-	// distance from src to i
-
 	bool sptSet[V]; // sptSet[i] will be true if vertex i is
 					// included in shortest
 	// path tree or shortest distance from src to i is
