@@ -15,6 +15,7 @@ const char string_8[] PROGMEM = ".-.S.-.-.";
 
 const char *const grid[] PROGMEM = {string_0, string_1, string_2, string_3, string_4, string_5, string_6, string_7, string_8};
 
+DeviceDriverSet_ULTRASONIC myUltrasonic;
 DeviceDriverSet_Motor AppMotor;
 Application_xxx Application_ConquerorCarxxx0;
 MPU6050_getdata AppMPU6050getdata;
@@ -22,14 +23,11 @@ int timer = 0;
 ConquerorCarMotionControl status = stop_it;
 Directions* carDirections = (Directions*)malloc((V*4) * sizeof(int));
 
-float getTimeForDistance(float distance) {
-  return distance/0.079;
-}
-
 int src = 0;
 int target = 0;
 int gates[3] = {-1, -1, -1};
 Directions startingDirection = East;
+int distance = 0;
 
 int (*graph)[V] = malloc(sizeof(int[V][V]));
 char buffer[0];
@@ -49,6 +47,15 @@ int currentTime = 0;
 int formerCounter = -1;
 int counter = 0;
 bool finished = false;
+bool useDistance = false;
+int currentDistance = 0;
+
+int speed = 125;
+
+float getTimeForDistance(float distance) {
+  float slope = 0.000351238*(speed)-0.0109095;
+  return distance/slope;
+}
 
 void setup() {
   Serial.begin(9600);
@@ -285,6 +292,7 @@ void setup() {
   AppMPU6050getdata.MPU6050_dveInit();
   delay(2000);
   AppMPU6050getdata.MPU6050_calibration();
+  myUltrasonic.DeviceDriverSet_ULTRASONIC_Init();
 
   dijkstra(graph, src);
 
@@ -421,6 +429,10 @@ void setup() {
   Serial.println();
   counter = 0;
   formerCounter = -1;
+  speed = 125;
+  distance = 0;
+  currentDistance = 0;
+  useDistance = 0;
 }
 
 void turn(Directions direction) {
@@ -458,6 +470,10 @@ void turn(Directions direction) {
 void loop() {
   ApplicationFunctionSet_ConquerorCarMotionControl(status, 250);
 
+  myUltrasonic.DeviceDriverSet_ULTRASONIC_Get(&distance);
+  Serial.print("Distance: ");
+  Serial.println(distance);
+
   if (finished) {
     finished = false;
   }
@@ -468,18 +484,18 @@ void loop() {
 
   if (counter != formerCounter) {
     formerCounter = counter;
-
-    Serial.println(counter);
     Directions direction = carDirections[counter];
-    Serial.println(direction);
     switch (direction) {
       case Movement:
+        myUltrasonic.DeviceDriverSet_ULTRASONIC_Get(&currentDistance);
+        useDistance = true;
         status = Forward;
         break;
       case Default:
         status = stop_it;
         break;
       default:
+        useDistance = false;
         turn(direction);
         currentDirection = direction;
         break;
@@ -495,7 +511,11 @@ void loop() {
     distance = 50;
   }
 
-  if (abs(timer - currentTime) > getTimeForDistance(distance)) {
+  if (!useDistance && abs(timer - currentTime) > getTimeForDistance(distance)) {
+    status = stop_it;
+    counter++;
+    finished = true;
+  } else if (useDistance && abs(currentDistance - distance) >= distance) {
     status = stop_it;
     counter++;
     finished = true;
