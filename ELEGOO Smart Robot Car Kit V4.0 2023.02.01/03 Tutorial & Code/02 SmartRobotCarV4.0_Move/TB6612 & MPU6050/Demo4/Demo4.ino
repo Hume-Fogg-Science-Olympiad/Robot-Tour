@@ -15,7 +15,6 @@ const char string_8[] PROGMEM = ".-.S.-.-.";
 
 const char *const grid[] PROGMEM = {string_0, string_1, string_2, string_3, string_4, string_5, string_6, string_7, string_8};
 
-DeviceDriverSet_ULTRASONIC myUltrasonic;
 DeviceDriverSet_Motor AppMotor;
 Application_xxx Application_ConquerorCarxxx0;
 MPU6050_getdata AppMPU6050getdata;
@@ -27,7 +26,6 @@ int src = 0;
 int target = 0;
 int gates[3] = {-1, -1, -1};
 Directions startingDirection = East;
-int distance = 0;
 
 int (*graph)[V] = malloc(sizeof(int[V][V]));
 char buffer[0];
@@ -47,13 +45,17 @@ int currentTime = 0;
 int formerCounter = -1;
 int counter = 0;
 bool finished = false;
-bool useDistance = false;
-int currentDistance = 0;
 
-int speed = 125;
+float speed = 125;
+float targetTime = 30;
 
 float getTimeForDistance(float distance) {
-  float slope = 0.000351238*(speed)-0.0109095;
+  float slope;
+  if (speed < 100) {
+    slope = 0.00026*(speed);
+  } else {
+    slope = 0.000316*(speed);
+  }
   return distance/slope;
 }
 
@@ -116,8 +118,6 @@ void setup() {
         src = place;
         startingDirection = West;
       }
-
-      Serial.println(upChar);
 
       if ((int) upChar == 66) {
         graph[place][place - 4] = 0;
@@ -292,7 +292,6 @@ void setup() {
   AppMPU6050getdata.MPU6050_dveInit();
   delay(2000);
   AppMPU6050getdata.MPU6050_calibration();
-  myUltrasonic.DeviceDriverSet_ULTRASONIC_Init();
 
   dijkstra(graph, src);
 
@@ -379,8 +378,6 @@ void setup() {
     int currentNode = pathArray[i - 1];
     int nextNode = pathArray[i];
 
-    Serial.println(nextNode);
-
     if (nextNode == -1) break;
 
     int difference = currentNode - nextNode;
@@ -409,6 +406,16 @@ void setup() {
     if (orientation != tempDirection) {
       carDirections[lastCounter] = orientation;
 
+      if (abs(rotations[orientation]) == 180) {
+        targetTime -= 1.9592;
+      } else if (abs(rotations[orientation]) == 90) {
+        targetTime -= 1.0518;
+      } else if (abs(rotations[orientation]) == 45) {
+        targetTime -= 0.5327;
+      } else if (abs(rotations[orientation]) == 135) {
+        targetTime -= 1.4737;
+      }
+
       lastCounter++;
       tempDirection = orientation;
     }
@@ -421,18 +428,26 @@ void setup() {
 
   free(pathArray);
 
+  int totalMovement = 0;
   for (int i = 0; i < V*4; i++) {
-    if (carDirections[i] < 0) break;
-    Serial.println(carDirections[i]);
+    if (carDirections[i] == Default) break;
+
+    if (carDirections[i] == Movement) {
+      totalMovement++;
+    }
   }
 
+  speed = (float((50/(float(targetTime/totalMovement)*1000)))/0.00026);
+  if (speed >= 100) {
+    speed = (float((50/(float(targetTime/totalMovement)*1000)))/0.000316);
+  }
+
+  Serial.println(speed);
   Serial.println();
+
   counter = 0;
   formerCounter = -1;
-  speed = 125;
-  distance = 0;
-  currentDistance = 0;
-  useDistance = 0;
+  finished = false;
 }
 
 void turn(Directions direction) {
@@ -468,11 +483,7 @@ void turn(Directions direction) {
 }
 
 void loop() {
-  ApplicationFunctionSet_ConquerorCarMotionControl(status, 250);
-
-  myUltrasonic.DeviceDriverSet_ULTRASONIC_Get(&distance);
-  Serial.print("Distance: ");
-  Serial.println(distance);
+  ApplicationFunctionSet_ConquerorCarMotionControl(status, speed);
 
   if (finished) {
     finished = false;
@@ -487,15 +498,12 @@ void loop() {
     Directions direction = carDirections[counter];
     switch (direction) {
       case Movement:
-        myUltrasonic.DeviceDriverSet_ULTRASONIC_Get(&currentDistance);
-        useDistance = true;
         status = Forward;
         break;
       case Default:
         status = stop_it;
         break;
       default:
-        useDistance = false;
         turn(direction);
         currentDirection = direction;
         break;
@@ -511,13 +519,9 @@ void loop() {
     distance = 50;
   }
 
-  if (!useDistance && abs(timer - currentTime) > getTimeForDistance(distance)) {
+  if (abs(timer - currentTime) > getTimeForDistance(distance)) {
     status = stop_it;
     counter++;
     finished = true;
-  } else if (useDistance && abs(currentDistance - distance) >= distance) {
-    status = stop_it;
-    counter++;
-    finished = true;
-  }
+  } 
 }

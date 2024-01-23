@@ -69,6 +69,8 @@ bool MPU6050_getdata::MPU6050_calibration(void)
 }
 bool MPU6050_getdata::MPU6050_dveGetEulerAngles(float *Yaw)
 {
+  if (abs(agz) > 360) agz = 0;
+
   unsigned long now = millis();   //当前时间(ms)
   dt = (now - lastTime) / 1000.0; //微分时间(s)
   lastTime = now;                 //上一次采样时间(ms)
