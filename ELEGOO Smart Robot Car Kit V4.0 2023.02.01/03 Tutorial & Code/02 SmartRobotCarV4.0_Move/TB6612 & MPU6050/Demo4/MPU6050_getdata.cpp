@@ -67,7 +67,7 @@ bool MPU6050_getdata::MPU6050_calibration(void)
   // gzo = accelgyro.getRotationZ();
   return false;
 }
-bool MPU6050_getdata::MPU6050_dveGetEulerAngles(float *Yaw)
+bool MPU6050_getdata::MPU6050_dveGetEulerAngles(float *Yaw, bool becomeNegative = false)
 {
   if (abs(agz) > 360) agz = 0;
 
@@ -81,6 +81,10 @@ bool MPU6050_getdata::MPU6050_dveGetEulerAngles(float *Yaw)
     gyroz = 0.00;
   }
   agz += gyroz; //z轴角速度积分
+
+  if (becomeNegative) {
+    agz = -agz;
+  }
   *Yaw = agz;
   return false;
 }

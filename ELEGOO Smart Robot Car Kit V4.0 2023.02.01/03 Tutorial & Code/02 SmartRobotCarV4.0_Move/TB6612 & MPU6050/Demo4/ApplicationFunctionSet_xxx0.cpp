@@ -28,7 +28,8 @@ enum Directions {
   Southwest,  //(6)
   Northwest,  //(7)
   Movement,   //(8)
-  Default     //(9)
+  BackwardsMovement, //(9)
+  Default     //(10)
 };
 
 static Directions currentDirection = North;

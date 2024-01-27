@@ -4,14 +4,14 @@
 #include "test.cpp"
 
 const char string_0[] PROGMEM = ".-.-.-.-.";
-const char string_1[] PROGMEM = "| |XBGB |";
-const char string_2[] PROGMEM = ".-.B.-.-.";
-const char string_3[] PROGMEM = "| | | | |";
-const char string_4[] PROGMEM = ".B.-.B.-.";
-const char string_5[] PROGMEM = "|G| B |G|";
-const char string_6[] PROGMEM = ".-.B.-.B.";
-const char string_7[] PROGMEM = "| | | | |";
-const char string_8[] PROGMEM = ".-.S.-.-.";
+const char string_1[] PROGMEM = "| | BG| |";
+const char string_2[] PROGMEM = ".-.-.B.-.";
+const char string_3[] PROGMEM = "|GB B |X|";
+const char string_4[] PROGMEM = ".B.-.-.B.";
+const char string_5[] PROGMEM = "| | B |G|";
+const char string_6[] PROGMEM = ".-.B.-.-.";
+const char string_7[] PROGMEM = "S | | | |";
+const char string_8[] PROGMEM = ".-.-.-.-.";
 
 const char *const grid[] PROGMEM = {string_0, string_1, string_2, string_3, string_4, string_5, string_6, string_7, string_8};
 
@@ -47,11 +47,19 @@ int counter = 0;
 bool finished = false;
 
 float speed = 125;
-float targetTime = 30;
+float targetTime = 75;
+float delayTime = 0;
+bool delayBool = false;
 
 float getTimeForDistance(float distance) {
   float slope;
-  if (speed < 100) {
+  if (speed == 150) {
+    slope = 0.0375762;
+  } else if (speed == 70) {
+    slope = 0.0164571;
+  } else if (speed < 60) {
+    slope = 0.00027*(speed);
+  } else if (speed < 100) {
     slope = 0.00026*(speed);
   } else {
     slope = 0.000316*(speed);
@@ -66,8 +74,11 @@ void setup() {
     for (int j = 0; j < V; j++)
       graph[i][j] = 0;
 
-  for (int i = 0; i < V*4; i++)
-    carDirections[i] = Default;
+  for (int i = 0; i < V*4; i++) {
+    if (i == 0) {
+      carDirections[i] == Forward;
+    } else carDirections[i] = Default;
+  }
 
   for (int i = 0; i < V*4; i++)
     pathArray[i] = -1;
@@ -296,7 +307,7 @@ void setup() {
   dijkstra(graph, src);
 
   int lowest = -1;
-  int currentCounter = 0;
+  int currentCounter = 1;
   int lowestIndex = 0;
   for (int i = 0; i < 3; i++) {
     int currentGate = gates[i];
@@ -374,6 +385,7 @@ void setup() {
 
   int lastCounter = 0;
   int tempDirection = startingDirection;
+  int totalRotations = 0;
   for (int i = 1; i < V*4; i++) {
     int currentNode = pathArray[i - 1];
     int nextNode = pathArray[i];
@@ -403,12 +415,8 @@ void setup() {
       continue;
     }
 
-    if (orientation != tempDirection) {
-      carDirections[lastCounter] = orientation;
-
-      if (abs(rotations[orientation]) == 180) {
-        targetTime -= 1.9592;
-      } else if (abs(rotations[orientation]) == 90) {
+    if (orientation != tempDirection && abs(rotations[orientation] - rotations[tempDirection]) != 180) {
+      if (abs(rotations[orientation]) == 90) {
         targetTime -= 1.0518;
       } else if (abs(rotations[orientation]) == 45) {
         targetTime -= 0.5327;
@@ -416,11 +424,16 @@ void setup() {
         targetTime -= 1.4737;
       }
 
+      carDirections[lastCounter] = orientation;
+
       lastCounter++;
       tempDirection = orientation;
+      totalRotations++;
     }
 
-    carDirections[lastCounter] = Movement;
+    if (abs(rotations[orientation] - rotations[tempDirection]) == 180) {
+      carDirections[lastCounter] = BackwardsMovement;
+    } else carDirections[lastCounter] = Movement;
     lastCounter++;
   }
 
@@ -432,22 +445,37 @@ void setup() {
   for (int i = 0; i < V*4; i++) {
     if (carDirections[i] == Default) break;
 
-    if (carDirections[i] == Movement) {
+    if (carDirections[i] == Movement || carDirections[i] == BackwardsMovement) {
       totalMovement++;
     }
   }
 
   speed = (float((50/(float(targetTime/totalMovement)*1000)))/0.00026);
+
   if (speed >= 100) {
     speed = (float((50/(float(targetTime/totalMovement)*1000)))/0.000316);
+  } else if (speed < 70) {
+    speed = 70;
+
+    float reachableTime = totalMovement*((50/(0.0164571))/1000);
+    float timeDifference = targetTime - reachableTime;
+    delayTime = (timeDifference/totalRotations)*1000;
   }
 
+  speed = 70;
+  delayTime = (targetTime - (((50/0.0164571)*totalMovement)/1000))/(totalMovement+totalRotations) * 1000;
+  if (delayTime < 0) {
+    delayTime = 0;
+  }
+
+  Serial.println(delayTime);
   Serial.println(speed);
   Serial.println();
 
   counter = 0;
   formerCounter = -1;
   finished = false;
+  delayBool = false;
 }
 
 void turn(Directions direction) {
@@ -457,20 +485,34 @@ void turn(Directions direction) {
   desiredYaw = rotations[(int) direction];
 
   if (desiredYaw == -180) {
-    if (abs(180 - Yaw) < abs(-180 - Yaw)) desiredYaw = 180;
+    if (abs(180 - Yaw) < abs(-180 - Yaw)) {
+      rotations[(int) direction] = 180;  
+      desiredYaw = 180;
+    }
+  } else if (desiredYaw == 180) {
+    if (abs(180 - Yaw) > abs(-180 - Yaw)) {
+      rotations[(int) direction] = -180;  
+      desiredYaw = -180;
+    }
   }
 
   Serial.println(desiredYaw);
   Serial.println(Yaw);
 
+  if (abs(180 - Yaw) < 5 || abs(-180 - Yaw) < 5) {
+    if (abs(desiredYaw - -Yaw) < abs(desiredYaw - Yaw)) {
+      AppMPU6050getdata.MPU6050_dveGetEulerAngles(&Yaw, true);
+    }
+  }
+
   bool turnDirection = Yaw < desiredYaw;
   while (abs(Yaw - desiredYaw) > 3) {
-    if (turnDirection) {
+    if (turnDirection) { //Right
       AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_back, /*speed_A*/ 100,
                                              /*direction_B*/ direction_just, /*speed_B*/ 100, /*controlED*/ control_enable); //Motor control
       
       Serial.println(Yaw);
-    } else if (!turnDirection) {
+    } else if (!turnDirection) { //Left
       AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_just, /*speed_A*/ 100,
                                              /*direction_B*/ direction_back, /*speed_B*/ 100, /*controlED*/ control_enable); //Motor control
       Serial.println(Yaw);
@@ -480,6 +522,11 @@ void turn(Directions direction) {
 
   AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_void, /*speed_A*/ 0,
                                          /*direction_B*/ direction_void, /*speed_B*/ 0, /*controlED*/ control_enable); //Motor control
+
+  if (delayTime != 0) {
+    delayBool = true;
+    currentTime = millis();
+  }
 }
 
 void loop() {
@@ -493,12 +540,22 @@ void loop() {
 
   timer = millis();
 
-  if (counter != formerCounter) {
+  if (delayBool) {
+    AppMPU6050getdata.MPU6050_dveGetEulerAngles(&Yaw);
+    if (abs(currentTime - timer) >= delayTime) {
+      delayBool = false;
+    }
+  }
+
+  if (counter != formerCounter && !delayBool) {
     formerCounter = counter;
     Directions direction = carDirections[counter];
     switch (direction) {
       case Movement:
         status = Forward;
+        break;
+      case BackwardsMovement:
+        status = Backward;
         break;
       case Default:
         status = stop_it;
@@ -513,15 +570,24 @@ void loop() {
   }
 
   float distance = 0;
-  if (status == Forward && (currentDirection == Northeast || currentDirection == Southeast || currentDirection == Southwest || currentDirection == Northwest)) {
+  if ((status == Forward || status == Backward) && (currentDirection == Northeast || currentDirection == Southeast || currentDirection == Southwest || currentDirection == Northwest)) {
     distance = 70.7106781187;
   } else if (status == Forward) {
+    if (counter == 1) {
+      distance = 40;
+    } else {
+      if (speed == 70) distance = 50;
+      else distance = 50;
+    }
+  } else if (status == Backward) {
     distance = 50;
   }
 
-  if (abs(timer - currentTime) > getTimeForDistance(distance)) {
+  if (abs(timer - currentTime) > getTimeForDistance(distance) && !delayBool) {
     status = stop_it;
     counter++;
     finished = true;
+    delayBool = true;
+    currentTime = millis();
   } 
 }
