@@ -4,13 +4,13 @@
 #include "test.cpp"
 
 const char string_0[] PROGMEM = ".-.-.-.-.";
-const char string_1[] PROGMEM = "| | BG| |";
-const char string_2[] PROGMEM = ".-.-.B.-.";
-const char string_3[] PROGMEM = "|GB B |X|";
-const char string_4[] PROGMEM = ".B.-.-.B.";
-const char string_5[] PROGMEM = "| | B |G|";
-const char string_6[] PROGMEM = ".-.B.-.-.";
-const char string_7[] PROGMEM = "S | | | |";
+const char string_1[] PROGMEM = "| |XB |G|";
+const char string_2[] PROGMEM = ".-.B.-.B.";
+const char string_3[] PROGMEM = "| B | | S";
+const char string_4[] PROGMEM = ".-.-.B.-.";
+const char string_5[] PROGMEM = "| B BGB |";
+const char string_6[] PROGMEM = ".-.-.-.-.";
+const char string_7[] PROGMEM = "| | | |G|";
 const char string_8[] PROGMEM = ".-.-.-.-.";
 
 const char *const grid[] PROGMEM = {string_0, string_1, string_2, string_3, string_4, string_5, string_6, string_7, string_8};
@@ -54,7 +54,7 @@ bool delayBool = false;
 float getTimeForDistance(float distance) {
   float slope;
   if (speed == 150) {
-    slope = 0.0375762;
+    slope = 0.0420864;
   } else if (speed == 70) {
     slope = 0.0164571;
   } else if (speed < 60) {
@@ -462,8 +462,12 @@ void setup() {
     delayTime = (timeDifference/totalRotations)*1000;
   }
 
-  speed = 70;
-  delayTime = (targetTime - (((50/0.0164571)*totalMovement)/1000))/(totalMovement+totalRotations) * 1000;
+  speed = 150;
+
+  Serial.println(targetTime);
+  Serial.println(totalMovement);
+  Serial.println(totalRotations);
+  delayTime = (targetTime - (((50/0.0420864)*totalMovement)/1000))/(totalMovement+totalRotations) * 1000;
   if (delayTime < 0) {
     delayTime = 0;
   }
