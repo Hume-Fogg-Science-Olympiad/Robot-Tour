@@ -467,7 +467,7 @@ void setup() {
   Serial.println(targetTime);
   Serial.println(totalMovement);
   Serial.println(totalRotations);
-  delayTime = (targetTime - (((50/0.0420864)*totalMovement)/1000))/(totalMovement+totalRotations) * 1000;
+  delayTime = (targetTime - (((53.075/0.0420864)*totalMovement)/1000))/(totalMovement+totalRotations) * 1000;
   if (delayTime < 0) {
     delayTime = 0;
   }
@@ -527,10 +527,8 @@ void turn(Directions direction) {
   AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_void, /*speed_A*/ 0,
                                          /*direction_B*/ direction_void, /*speed_B*/ 0, /*controlED*/ control_enable); //Motor control
 
-  if (delayTime != 0) {
-    delayBool = true;
-    currentTime = millis();
-  }
+  delayBool = true;
+  currentTime = millis();
 }
 
 void loop() {
@@ -546,7 +544,11 @@ void loop() {
 
   if (delayBool) {
     AppMPU6050getdata.MPU6050_dveGetEulerAngles(&Yaw);
-    if (abs(currentTime - timer) >= delayTime) {
+    if (delayTime == 0) {
+      delayBool = false;
+      counter++;
+    } else if (abs(currentTime - timer) >= delayTime) {
+      counter++;
       delayBool = false;
     }
   }
@@ -581,15 +583,14 @@ void loop() {
       distance = 40;
     } else {
       if (speed == 70) distance = 50;
-      else distance = 50;
+      else distance = 53.075;
     }
   } else if (status == Backward) {
-    distance = 50;
+    distance = 54.075;
   }
 
   if (abs(timer - currentTime) > getTimeForDistance(distance) && !delayBool) {
     status = stop_it;
-    counter++;
     finished = true;
     delayBool = true;
     currentTime = millis();
