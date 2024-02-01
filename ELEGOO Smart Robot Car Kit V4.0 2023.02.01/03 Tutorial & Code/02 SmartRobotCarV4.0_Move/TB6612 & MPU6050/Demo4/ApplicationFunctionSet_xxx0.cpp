@@ -47,15 +47,13 @@ static void ApplicationFunctionSet_ConquerorCarLinearMotionControl(ConquerorCarM
   static float yaw_So = 0;
   static uint8_t en = 110;
   static unsigned long is_time;
-  static float usedYaw = 0;
 
-  AppMPU6050getdata.MPU6050_dveGetEulerAngles(&Yaw);
-  Serial.println(Yaw);
   if (en != directionRecord || millis() - is_time > 10)
   {
     AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_void, /*speed_A*/ 0,
                                            /*direction_B*/ direction_void, /*speed_B*/ 0, /*controlED*/ control_enable); //Motor control
-    AppMPU6050getdata.MPU6050_dveGetEulerAngles(&usedYaw);
+    AppMPU6050getdata.MPU6050_dveGetEulerAngles(&Yaw);
+    Serial.println(Yaw);
 
     is_time = millis();
   }
@@ -69,7 +67,7 @@ static void ApplicationFunctionSet_ConquerorCarLinearMotionControl(ConquerorCarM
   
 
   //加入比例常数Kp
-  int R = (usedYaw - yaw_So) * Kp + speed;
+  int R = (Yaw - yaw_So) * Kp + speed;
   if (R > UpperLimit)
   {
     R = UpperLimit;
@@ -78,7 +76,7 @@ static void ApplicationFunctionSet_ConquerorCarLinearMotionControl(ConquerorCarM
   {
     R = 10;
   }
-  int L = (yaw_So - usedYaw) * Kp + speed;
+  int L = (yaw_So - Yaw) * Kp + speed;
   if (L > UpperLimit)
   {
     L = UpperLimit;
