@@ -583,10 +583,10 @@ void loop() {
       distance = 44.325;
     } else {
       if (speed == 70) distance = 50;
-      else distance = 59.325-2-2;
+      else distance = 50;
     }
   } else if (status == Backward) {
-    distance = 59.325 - 2 - 2 + 1;
+    distance = 50;
   }
 
   if (abs(timer - currentTime) > getTimeForDistance(distance) && !delayBool) {
