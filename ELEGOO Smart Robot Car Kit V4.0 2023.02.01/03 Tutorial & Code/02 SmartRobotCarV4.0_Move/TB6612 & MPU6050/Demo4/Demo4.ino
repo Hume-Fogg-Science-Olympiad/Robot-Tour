@@ -4,13 +4,13 @@
 #include "test.cpp"
 
 const char string_0[] PROGMEM = ".-.-.-.-.";
-const char string_1[] PROGMEM = "| |XB |G|";
-const char string_2[] PROGMEM = ".-.B.-.B.";
-const char string_3[] PROGMEM = "| B | | S";
-const char string_4[] PROGMEM = ".-.-.B.-.";
-const char string_5[] PROGMEM = "| B BGB |";
+const char string_1[] PROGMEM = "|G| | | S";
+const char string_2[] PROGMEM = ".-.-.-.B.";
+const char string_3[] PROGMEM = "| | B | |";
+const char string_4[] PROGMEM = ".B.-.B.-.";
+const char string_5[] PROGMEM = "| |X| | |";
 const char string_6[] PROGMEM = ".-.-.-.-.";
-const char string_7[] PROGMEM = "| | | |G|";
+const char string_7[] PROGMEM = "|G| B |G|";
 const char string_8[] PROGMEM = ".-.-.-.-.";
 
 const char *const grid[] PROGMEM = {string_0, string_1, string_2, string_3, string_4, string_5, string_6, string_7, string_8};
@@ -20,7 +20,7 @@ Application_xxx Application_ConquerorCarxxx0;
 MPU6050_getdata AppMPU6050getdata;
 int timer = 0;
 ConquerorCarMotionControl status = stop_it;
-Directions* carDirections = (Directions*)malloc((V*4) * sizeof(int));
+Directions* carDirections = (Directions*)malloc((V*5) * sizeof(int));
 
 int src = 0;
 int target = 0;
@@ -54,7 +54,7 @@ bool delayBool = false;
 float getTimeForDistance(float distance) {
   float slope;
   if (speed == 150) {
-    slope = 0.0420864;
+    slope = 0.0278679;
   } else if (speed == 70) {
     slope = 0.0164571;
   } else if (speed < 60) {
@@ -74,13 +74,7 @@ void setup() {
     for (int j = 0; j < V; j++)
       graph[i][j] = 0;
 
-  for (int i = 0; i < V*4; i++) {
-    if (i == 0) {
-      carDirections[i] == Forward;
-    } else carDirections[i] = Default;
-  }
-
-  for (int i = 0; i < V*4; i++)
+  for (int i = 0; i < 32; i++)
     pathArray[i] = -1;
 
   for (int y = 1; y < 9; y += 2) {
@@ -111,10 +105,6 @@ void setup() {
       if (!onTopSide) graph[place][place - 4] = 2;
       if (!onBottomSide) graph[place][place + 4] = 2;
 
-      if (!onLeftSide && !onTopSide) graph[place][place - 1 - 4] = 3;
-      if (!onLeftSide && !onBottomSide) graph[place][place - 1 + 4] = 3;
-      if (!onRightSide && !onTopSide) graph[place][place + 1 - 4] = 3;
-      if (!onRightSide && !onBottomSide) graph[place][place + 1 + 4] = 3;
 
       if ((int) upChar == 83) {
         src = place;
@@ -307,7 +297,7 @@ void setup() {
   dijkstra(graph, src);
 
   int lowest = -1;
-  int currentCounter = 1;
+  int currentCounter = 0;
   int lowestIndex = 0;
   for (int i = 0; i < 3; i++) {
     int currentGate = gates[i];
@@ -383,7 +373,13 @@ void setup() {
     currentCounter++;
   }  
 
-  int lastCounter = 0;
+  for (int i = 0; i < V*4; i++) {
+    if (i == 0) {
+      carDirections[i] = Movement;
+    } else carDirections[i] = Default;
+  }
+
+  int lastCounter = 1;
   int tempDirection = startingDirection;
   int totalRotations = 0;
   for (int i = 1; i < V*4; i++) {
@@ -433,7 +429,9 @@ void setup() {
 
     if (abs(rotations[orientation] - rotations[tempDirection]) == 180) {
       carDirections[lastCounter] = BackwardsMovement;
-    } else carDirections[lastCounter] = Movement;
+    } else {
+      carDirections[lastCounter] = Movement;
+    }
     lastCounter++;
   }
 
@@ -450,31 +448,13 @@ void setup() {
     }
   }
 
-  speed = (float((50/(float(targetTime/totalMovement)*1000)))/0.00026);
-
-  if (speed >= 100) {
-    speed = (float((50/(float(targetTime/totalMovement)*1000)))/0.000316);
-  } else if (speed < 70) {
-    speed = 70;
-
-    float reachableTime = totalMovement*((50/(0.0164571))/1000);
-    float timeDifference = targetTime - reachableTime;
-    delayTime = (timeDifference/totalRotations)*1000;
-  }
 
   speed = 150;
 
-  Serial.println(targetTime);
-  Serial.println(totalMovement);
-  Serial.println(totalRotations);
-  delayTime = (targetTime - (((53.075/0.0420864)*totalMovement)/1000))/(totalMovement+totalRotations) * 1000;
+  delayTime = (targetTime - (((48/0.0278679)*totalMovement)/1000))/(totalMovement+totalRotations) * 1000;
   if (delayTime < 0) {
     delayTime = 0;
   }
-
-  Serial.println(delayTime);
-  Serial.println(speed);
-  Serial.println();
 
   counter = 0;
   formerCounter = -1;
@@ -532,7 +512,7 @@ void turn(Directions direction) {
 }
 
 void loop() {
-  ApplicationFunctionSet_ConquerorCarMotionControl(status, speed);
+  ApplicationFunctionSet_ConquerorCarMotionControl(status, 150);
 
   if (finished) {
     finished = false;
@@ -576,17 +556,17 @@ void loop() {
   }
 
   float distance = 0;
-  if ((status == Forward || status == Backward) && (currentDirection == Northeast || currentDirection == Southeast || currentDirection == Southwest || currentDirection == Northwest)) {
-    distance = 70.7106781187;
-  } else if (status == Forward) {
-    if (counter == 1) {
-      distance = 44.325;
+  if (status == Forward) {
+    if (counter == 0) {
+      distance = 37.5;
     } else {
-      if (speed == 70) distance = 50;
-      else distance = 50;
+      if (currentDirection == North) distance = 52;
+      else {
+        distance = 52;
+      }
     }
   } else if (status == Backward) {
-    distance = 50;
+    distance = 52;
   }
 
   if (abs(timer - currentTime) > getTimeForDistance(distance) && !delayBool) {
