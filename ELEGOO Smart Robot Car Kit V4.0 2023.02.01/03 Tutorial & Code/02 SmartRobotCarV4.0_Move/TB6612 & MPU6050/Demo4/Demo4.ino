@@ -566,7 +566,7 @@ void loop() {
       }
     }
   } else if (status == Backward) {
-    distance = 52;
+    distance = 54;
   }
 
   if (abs(timer - currentTime) > getTimeForDistance(distance) && !delayBool) {
