@@ -3,6 +3,8 @@
 #include "ApplicationFunctionSet_xxx0.cpp"
 #include "test.cpp"
 
+//https://www.youtube.com/watch?v=LrsTBWf6Wsc Helpful youtube video about odometry (how to get position and orientation of a robot based on simple values)
+
 const char string_0[] PROGMEM = ".-.-.-.-.";
 const char string_1[] PROGMEM = "|G| | | S";
 const char string_2[] PROGMEM = ".-.-.-.B.";
@@ -50,6 +52,9 @@ float speed = 125;
 float targetTime = 75;
 float delayTime = 0;
 bool delayBool = false;
+
+DeviceDriverSet_ULTRASONIC myUltrasonic;
+int ultraSonicDistance = 0;
 
 float getTimeForDistance(float distance) {
   float slope;
@@ -289,10 +294,12 @@ void setup() {
       break;
   }
 
+  myUltrasonic.DeviceDriverSet_ULTRASONIC_Init();
   AppMotor.DeviceDriverSet_Motor_Init();
   AppMPU6050getdata.MPU6050_dveInit();
   delay(2000);
   AppMPU6050getdata.MPU6050_calibration();
+  myUltrasonic.DeviceDriverSet_ULTRASONIC_Get(&ultraSonicDistance);
 
   dijkstra(graph, src);
 
@@ -480,9 +487,6 @@ void turn(Directions direction) {
     }
   }
 
-  Serial.println(desiredYaw);
-  Serial.println(Yaw);
-
   if (abs(180 - Yaw) < 5 || abs(-180 - Yaw) < 5) {
     if (abs(desiredYaw - -Yaw) < abs(desiredYaw - Yaw)) {
       AppMPU6050getdata.MPU6050_dveGetEulerAngles(&Yaw, true);
@@ -492,14 +496,11 @@ void turn(Directions direction) {
   bool turnDirection = Yaw < desiredYaw;
   while (abs(Yaw - desiredYaw) > 3) {
     if (turnDirection) { //Right
-      AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_back, /*speed_A*/ 100,
-                                             /*direction_B*/ direction_just, /*speed_B*/ 100, /*controlED*/ control_enable); //Motor control
-      
-      Serial.println(Yaw);
+      AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_back, /*speed_A*/ 150,
+                                             /*direction_B*/ direction_just, /*speed_B*/ 150, /*controlED*/ control_enable); //Motor control
     } else if (!turnDirection) { //Left
-      AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_just, /*speed_A*/ 100,
-                                             /*direction_B*/ direction_back, /*speed_B*/ 100, /*controlED*/ control_enable); //Motor control
-      Serial.println(Yaw);
+      AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_just, /*speed_A*/ 150,
+                                             /*direction_B*/ direction_back, /*speed_B*/ 150, /*controlED*/ control_enable); //Motor control
     }
     AppMPU6050getdata.MPU6050_dveGetEulerAngles(&Yaw);
   }
@@ -558,15 +559,15 @@ void loop() {
   float distance = 0;
   if (status == Forward) {
     if (counter == 0) {
-      distance = 37.5;
+      distance = 40;
     } else {
-      if (currentDirection == North) distance = 52;
+      if (currentDirection == North) distance = 50;
       else {
-        distance = 52;
+        distance = 50;
       }
     }
   } else if (status == Backward) {
-    distance = 54;
+    distance = 48;
   }
 
   if (abs(timer - currentTime) > getTimeForDistance(distance) && !delayBool) {

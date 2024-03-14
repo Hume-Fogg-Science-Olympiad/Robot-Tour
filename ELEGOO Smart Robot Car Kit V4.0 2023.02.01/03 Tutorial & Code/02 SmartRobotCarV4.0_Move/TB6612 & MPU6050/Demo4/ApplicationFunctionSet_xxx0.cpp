@@ -53,7 +53,6 @@ static void ApplicationFunctionSet_ConquerorCarLinearMotionControl(ConquerorCarM
     AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_void, /*speed_A*/ 0,
                                            /*direction_B*/ direction_void, /*speed_B*/ 0, /*controlED*/ control_enable); //Motor control
     AppMPU6050getdata.MPU6050_dveGetEulerAngles(&Yaw);
-    Serial.println(Yaw);
 
     is_time = millis();
   }
@@ -61,8 +60,6 @@ static void ApplicationFunctionSet_ConquerorCarLinearMotionControl(ConquerorCarM
   {
     en = directionRecord;  
     yaw_So = rotations[currentDirection];
-    
-    Serial.println(yaw_So);
   }
   
 
@@ -104,7 +101,7 @@ static void ApplicationFunctionSet_ConquerorCarMotionControl(ConquerorCarMotionC
   uint8_t Kp, UpperLimit;
   uint8_t speed = is_speed;
   Kp = 10;
-  UpperLimit = 255;
+  UpperLimit = 150;
   switch (direction)
   {
   case /* constant-expression */
