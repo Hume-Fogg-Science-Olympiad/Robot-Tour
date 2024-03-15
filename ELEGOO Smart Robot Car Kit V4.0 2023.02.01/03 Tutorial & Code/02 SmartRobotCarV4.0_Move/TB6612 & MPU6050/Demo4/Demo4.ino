@@ -72,6 +72,8 @@ float getTimeForDistance(float distance) {
   return distance/slope;
 }
 
+bool useOtherUltrasonic = false;
+
 void setup() {
   Serial.begin(9600);
 
@@ -413,7 +415,7 @@ void setup() {
       }
     } else if (difference == -1) {
       orientation = East;
-      if (nextNode % 3 != 0) {
+      if ((nextNode - 3) % 4 != 0) {
         if (graph[nextNode][nextNode + 1] == 0) {
           ultrasonicMovement = true;
         }
@@ -453,6 +455,7 @@ void setup() {
       carDirections[lastCounter] = Movement;
     }
     lastCounter++;
+    ultrasonicMovement = false;
   }
 
   currentDirection = startingDirection;
@@ -463,8 +466,6 @@ void setup() {
   int totalMovement = 0;
   for (int i = 0; i < V*4; i++) {
     if (carDirections[i] == Default) break;
-
-    Serial.println(carDirections[i]);
 
     if (carDirections[i] == Movement || carDirections[i] == BackwardsMovement) {
       totalMovement++;
@@ -482,6 +483,7 @@ void setup() {
   formerCounter = -1;
   finished = false;
   delayBool = false;
+  useOtherUltrasonic = false;
 }
 
 void turn(Directions direction) {
@@ -531,7 +533,6 @@ int startingDistance = 0;
 int previousDistance = 0;
 
 bool useUltrasonic = true;
-bool useOtherUltrasonic = false;
 
 void loop() {
   ApplicationFunctionSet_ConquerorCarMotionControl(status, 150);
@@ -571,6 +572,7 @@ void loop() {
     Directions direction = carDirections[counter];
     switch (direction) {
       case Movement:
+
         startingDistance = ultraSonicDistance;
         previousDistance = startingDistance;
 
@@ -581,6 +583,10 @@ void loop() {
         status = Forward;
         break;
       case UltrasonicMovement:
+        Serial.println();
+        Serial.println(counter);
+        Serial.println();
+
         useOtherUltrasonic = true;
         status = Forward;
         break;
@@ -622,8 +628,9 @@ void loop() {
       status = stop_it;
       finished = true;
       delayBool = true;
-      currentTime = millis();
+      currentTime = millis(); 
       previousDistance = 0;
+      useOtherUltrasonic = false;
     }
   } else if (!delayBool) {
     if ((abs(timer - currentTime) > getTimeForDistance(distance) || (useUltrasonic && abs(startingDistance - ultraSonicDistance) > 45))) {
@@ -632,6 +639,7 @@ void loop() {
       delayBool = true;
       currentTime = millis();
       previousDistance = 0;
+      useOtherUltrasonic = false;
     }
   }
 }
