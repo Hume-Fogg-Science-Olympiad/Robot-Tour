@@ -6,12 +6,12 @@
 //https://www.youtube.com/watch?v=LrsTBWf6Wsc Helpful youtube video about odometry (how to get position and orientation of a robot based on simple values)
 
 const char string_0[] PROGMEM = ".-.-.-.-.";
-const char string_1[] PROGMEM = "|G| | | S";
+const char string_1[] PROGMEM = "|G| B | S";
 const char string_2[] PROGMEM = ".-.-.-.B.";
-const char string_3[] PROGMEM = "| | B | |";
+const char string_3[] PROGMEM = "| B B | |";
 const char string_4[] PROGMEM = ".B.-.B.-.";
 const char string_5[] PROGMEM = "| |X| | |";
-const char string_6[] PROGMEM = ".-.-.-.-.";
+const char string_6[] PROGMEM = ".-.-.-.B.";
 const char string_7[] PROGMEM = "|G| B |G|";
 const char string_8[] PROGMEM = ".-.-.-.-.";
 
@@ -371,8 +371,6 @@ void setup() {
 
   dijkstra(graph, lowest);
 
-  free(graph);
-
   for (int j = 0; j < V; j++) {
     if (tempPathArray[target][j] == -1) break;
 
@@ -386,6 +384,7 @@ void setup() {
     } else carDirections[i] = Default;
   }
 
+  bool ultrasonicMovement;
   int lastCounter = 1;
   int tempDirection = startingDirection;
   int totalRotations = 0;
@@ -400,20 +399,32 @@ void setup() {
     Directions orientation;
     if (difference == -4) {
       orientation = South;
+      if (nextNode + 4 <= 15) {
+        if (graph[nextNode][nextNode + 4] == 0) {
+          ultrasonicMovement = true;
+        }
+      } 
     } else if (difference == 4) {
       orientation = North;
+      if (nextNode - 4 >= 0) {
+        if (graph[nextNode][nextNode - 4] == 0) {
+          ultrasonicMovement = true;
+        }
+      }
     } else if (difference == -1) {
       orientation = East;
+      if (nextNode % 3 != 0) {
+        if (graph[nextNode][nextNode + 1] == 0) {
+          ultrasonicMovement = true;
+        }
+      }
     } else if (difference == 1) {
       orientation = West;
-    } else if (difference == 3) {
-      orientation = Northeast;
-    } else if (difference == -3) {
-      orientation = Southwest;
-    } else if (difference == 5) {
-      orientation = Northwest;
-    } else if (difference == -5) {
-      orientation = Southeast;
+      if ((nextNode % 4) != 0 && nextNode != 0) {
+        if (graph[nextNode][nextNode - 1] == 0) {
+          ultrasonicMovement = true;
+        }
+      }
     } else if (difference == 0) {
       continue;
     }
@@ -436,6 +447,8 @@ void setup() {
 
     if (abs(rotations[orientation] - rotations[tempDirection]) == 180) {
       carDirections[lastCounter] = BackwardsMovement;
+    } else if (ultrasonicMovement) {
+      carDirections[lastCounter] = UltrasonicMovement;
     } else {
       carDirections[lastCounter] = Movement;
     }
@@ -444,17 +457,19 @@ void setup() {
 
   currentDirection = startingDirection;
 
+  free(graph);
   free(pathArray);
 
   int totalMovement = 0;
   for (int i = 0; i < V*4; i++) {
     if (carDirections[i] == Default) break;
 
+    Serial.println(carDirections[i]);
+
     if (carDirections[i] == Movement || carDirections[i] == BackwardsMovement) {
       totalMovement++;
     }
   }
-
 
   speed = 150;
 
@@ -512,8 +527,23 @@ void turn(Directions direction) {
   currentTime = millis();
 }
 
+int startingDistance = 0;
+int previousDistance = 0;
+
+bool useUltrasonic = true;
+bool useOtherUltrasonic = false;
+
 void loop() {
   ApplicationFunctionSet_ConquerorCarMotionControl(status, 150);
+  myUltrasonic.DeviceDriverSet_ULTRASONIC_Get(&ultraSonicDistance);
+
+  if (abs(ultraSonicDistance - previousDistance) > 20 && previousDistance != 0) {
+    ultraSonicDistance = previousDistance;
+  } else {
+    previousDistance = ultraSonicDistance;
+  }
+  
+  Serial.println(ultraSonicDistance);
 
   if (finished) {
     finished = false;
@@ -526,9 +556,11 @@ void loop() {
   if (delayBool) {
     AppMPU6050getdata.MPU6050_dveGetEulerAngles(&Yaw);
     if (delayTime == 0) {
+      previousDistance = 0;
       delayBool = false;
       counter++;
     } else if (abs(currentTime - timer) >= delayTime) {
+      previousDistance = 0;
       counter++;
       delayBool = false;
     }
@@ -539,9 +571,27 @@ void loop() {
     Directions direction = carDirections[counter];
     switch (direction) {
       case Movement:
+        startingDistance = ultraSonicDistance;
+        previousDistance = startingDistance;
+
+        if (startingDistance > 150) {
+          useUltrasonic = false;
+        } else useUltrasonic = true;
+
+        status = Forward;
+        break;
+      case UltrasonicMovement:
+        useOtherUltrasonic = true;
         status = Forward;
         break;
       case BackwardsMovement:
+        startingDistance = ultraSonicDistance;
+        previousDistance = startingDistance;
+
+        if (startingDistance > 150) {
+          useUltrasonic = false;
+        } else useUltrasonic = true;
+
         status = Backward;
         break;
       case Default:
@@ -559,21 +609,29 @@ void loop() {
   float distance = 0;
   if (status == Forward) {
     if (counter == 0) {
-      distance = 40;
+      distance = 40/1.25;
     } else {
-      if (currentDirection == North) distance = 50;
-      else {
-        distance = 50;
-      }
+      distance = 50/1.25;
     }
   } else if (status == Backward) {
-    distance = 48;
+    distance = 48/1.25;
   }
 
-  if (abs(timer - currentTime) > getTimeForDistance(distance) && !delayBool) {
-    status = stop_it;
-    finished = true;
-    delayBool = true;
-    currentTime = millis();
-  } 
+  if (useOtherUltrasonic && !delayBool) {
+    if (ultraSonicDistance < 15) {
+      status = stop_it;
+      finished = true;
+      delayBool = true;
+      currentTime = millis();
+      previousDistance = 0;
+    }
+  } else if (!delayBool) {
+    if ((abs(timer - currentTime) > getTimeForDistance(distance) || (useUltrasonic && abs(startingDistance - ultraSonicDistance) > 45))) {
+      status = stop_it;
+      finished = true;
+      delayBool = true;
+      currentTime = millis();
+      previousDistance = 0;
+    }
+  }
 }
