@@ -6,11 +6,11 @@
 //https://www.youtube.com/watch?v=LrsTBWf6Wsc Helpful youtube video about odometry (how to get position and orientation of a robot based on simple values)
 
 const char string_0[] PROGMEM = ".-.-.-.-.";
-const char string_1[] PROGMEM = "|G| B | S";
+const char string_1[] PROGMEM = "|G| BX| S";
 const char string_2[] PROGMEM = ".-.-.-.B.";
 const char string_3[] PROGMEM = "| | B | |";
 const char string_4[] PROGMEM = ".B.-.B.-.";
-const char string_5[] PROGMEM = "| BX| | |";
+const char string_5[] PROGMEM = "|GB | | |";
 const char string_6[] PROGMEM = ".-.-.-.B.";
 const char string_7[] PROGMEM = "|G| B |G|";
 const char string_8[] PROGMEM = ".-.-.-.-.";
@@ -26,7 +26,7 @@ Directions* carDirections = (Directions*)malloc((V*5) * sizeof(int));
 
 int src = 0;
 int target = 0;
-int gates[3] = {-1, -1, -1};
+int* gates = (int*)malloc((4) * sizeof(int));
 Directions startingDirection = East;
 
 int (*graph)[V] = malloc(sizeof(int[V][V]));
@@ -88,6 +88,9 @@ void setup() {
 
   for (int i = 0; i < 32; i++)
     pathArray[i] = -1;
+
+  for (int i = 0; i < 4; i++) 
+    gates[i] = -1;
 
   for (int y = 1; y < 9; y += 2) {
     for (int x = 1; x < 9; x += 2) {
@@ -249,7 +252,7 @@ void setup() {
       if ((int) currentChar == 88) {
         target = place;
       } else if ((int) currentChar == 71) {
-        for (int j = 0; j < 3; j++) {
+        for (int j = 0; j < 4; j++) {
           if (gates[j] == -1) {
             gates[j] = place; 
             break;
@@ -313,7 +316,7 @@ void setup() {
   int lowest = -1;
   int currentCounter = 0;
   int lowestIndex = 0;
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < 4; i++) {
     int currentGate = gates[i];
 
     if (lowest = -1) {
@@ -336,7 +339,7 @@ void setup() {
   dijkstra(graph, lowest);
 
   lowest = -1;
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < 4; i++) {
     int currentGate = gates[i];
 
     if (currentGate == -1) continue;
@@ -361,7 +364,33 @@ void setup() {
 
   dijkstra(graph, lowest);
 
-  for (int i = 0; i < 3; i++) {
+  lowest = -1;
+  for (int i = 0; i < 4; i++) {
+    int currentGate = gates[i];
+
+    if (currentGate == -1) continue;
+
+    if (lowest = -1) {
+      lowest = currentGate;
+      lowestIndex = i;
+    } else if (dist[lowest] > dist[currentGate]) {
+      lowest = currentGate;
+      lowestIndex = i;
+    }
+  }
+
+  gates[lowestIndex] = -1;
+
+  for (int j = 0; j < V; j++) {
+    if (tempPathArray[lowest][j] == -1) break;
+
+    pathArray[currentCounter] = tempPathArray[lowest][j];
+    currentCounter++;
+  }
+
+  dijkstra(graph, lowest);
+
+  for (int i = 0; i < 4; i++) {
     int currentGate = gates[i];
     if (currentGate != -1) {
       lowest = currentGate;
@@ -391,6 +420,8 @@ void setup() {
     } else carDirections[i] = Default;
   }
 
+  free(gates);
+
   int ultrasonicMovement = 0;
   int lastCounter = 1;
   int tempDirection = startingDirection;
@@ -399,7 +430,7 @@ void setup() {
     int currentNode = pathArray[i - 1];
     int nextNode = pathArray[i];
 
-    if (nextNode == -1) break;
+    if (nextNode > 15 || nextNode < 0) break;
 
     int difference = currentNode - nextNode;
 
@@ -581,8 +612,6 @@ void loop() {
   } else {
     previousDistance = ultraSonicDistance;
   }
-
-  Serial.println(ultraSonicDistance);
 
   if (finished) {
     finished = false;
