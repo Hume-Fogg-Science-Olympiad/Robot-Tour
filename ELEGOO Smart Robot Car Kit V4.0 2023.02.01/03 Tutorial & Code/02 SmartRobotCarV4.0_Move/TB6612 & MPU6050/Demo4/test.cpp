@@ -9,7 +9,7 @@ using namespace std;
 #define V 16
 
 static int tempPathArray[V][V];
-static int* pathArray = (int*)malloc((32) * sizeof(int));
+static int* pathArray = (int*)malloc((48) * sizeof(int));
 
 static int dist[V]; // The output array. dist[i] will hold the
 			// shortest

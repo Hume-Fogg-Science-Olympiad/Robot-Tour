@@ -88,3 +88,6 @@ bool MPU6050_getdata::MPU6050_dveGetEulerAngles(float *Yaw, bool becomeNegative 
   *Yaw = agz;
   return false;
 }
+void MPU6050_getdata::reset(float resetDegree) {
+  agz = resetDegree;
+}

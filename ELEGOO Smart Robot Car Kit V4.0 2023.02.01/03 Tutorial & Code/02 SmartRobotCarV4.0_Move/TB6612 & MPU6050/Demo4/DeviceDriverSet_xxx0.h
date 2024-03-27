@@ -11,11 +11,16 @@ class DeviceDriverSet_ULTRASONIC
 public:
   void DeviceDriverSet_ULTRASONIC_Init(void);
   void DeviceDriverSet_ULTRASONIC_Test(void);
-  void DeviceDriverSet_ULTRASONIC_Get(uint16_t *ULTRASONIC_Get /*out*/);
+  void DeviceDriverSet_ULTRASONIC_1_Get(uint16_t *ULTRASONIC_Get /*out*/);
+  void DeviceDriverSet_ULTRASONIC_2_Get(uint16_t *ULTRASONIC_Get /*out*/);
 
 private:
-#define TRIG_PIN 13      // Arduino pin tied to trigger pin on the ultrasonic sensor.
-#define ECHO_PIN 12      // Arduino pin tied to echo pin on the ultrasonic sensor.
+#define TRIG_PIN_1 13      // Arduino pin tied to trigger pin on the ultrasonic sensor 1.
+#define ECHO_PIN_1 12      // Arduino pin tied to echo pin on the ultrasonic sensor 1.
+
+#define TRIG_PIN_2 11      // Arduino pin tied to trigger pin on the ultrasonic sensor 2.
+#define ECHO_PIN_2 10      // Arduino pin tied to echo pin on the ultrasonic sensor 2.
+
 #define MAX_DISTANCE 200 // Maximum distance we want to ping for (in centimeters). Maximum sensor distance is rated at 400-500cm.
 };
 
@@ -41,7 +46,7 @@ private:
 #define PIN_Motor_STBY 3
 
 public:
-#define speed_Max 255
+#define speed_Max 150
 #define direction_just true
 #define direction_back false
 #define direction_void 3

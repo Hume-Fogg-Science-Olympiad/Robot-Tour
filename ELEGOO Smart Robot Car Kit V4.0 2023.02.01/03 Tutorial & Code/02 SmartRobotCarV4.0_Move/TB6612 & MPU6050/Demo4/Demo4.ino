@@ -6,13 +6,13 @@
 //https://www.youtube.com/watch?v=LrsTBWf6Wsc Helpful youtube video about odometry (how to get position and orientation of a robot based on simple values)
 
 const char string_0[] PROGMEM = ".-.-.-.-.";
-const char string_1[] PROGMEM = "|G| BX| S";
-const char string_2[] PROGMEM = ".-.-.-.B.";
-const char string_3[] PROGMEM = "| | B | |";
-const char string_4[] PROGMEM = ".B.-.B.-.";
-const char string_5[] PROGMEM = "|GB | | |";
-const char string_6[] PROGMEM = ".-.-.-.B.";
-const char string_7[] PROGMEM = "|G| B |G|";
+const char string_1[] PROGMEM = "|G| | | S";
+const char string_2[] PROGMEM = ".-.-.B.-.";
+const char string_3[] PROGMEM = "|G| B | |";
+const char string_4[] PROGMEM = ".B.-.-.B.";
+const char string_5[] PROGMEM = "|X| B BG|";
+const char string_6[] PROGMEM = ".-.B.-.-.";
+const char string_7[] PROGMEM = "| |GB | |";
 const char string_8[] PROGMEM = ".-.-.-.-.";
 
 const char *const grid[] PROGMEM = {string_0, string_1, string_2, string_3, string_4, string_5, string_6, string_7, string_8};
@@ -54,7 +54,8 @@ float delayTime = 0;
 bool delayBool = false;
 
 DeviceDriverSet_ULTRASONIC myUltrasonic;
-int ultraSonicDistance = 0;
+int ultraSonicDistance1 = 0;
+int ultraSonicDistance2 = 0;
 
 int startingDistance = 0;
 int previousDistance = 0;
@@ -66,15 +67,7 @@ int useOtherUltrasonic = false;
 float getTimeForDistance(float distance) {
   float slope;
   if (speed == 150) {
-    slope = 0.0278679;
-  } else if (speed == 70) {
-    slope = 0.0164571;
-  } else if (speed < 60) {
-    slope = 0.00027*(speed);
-  } else if (speed < 100) {
-    slope = 0.00026*(speed);
-  } else {
-    slope = 0.000316*(speed);
+    slope = 0.0394048;
   }
   return distance/slope;
 }
@@ -86,8 +79,9 @@ void setup() {
     for (int j = 0; j < V; j++)
       graph[i][j] = 0;
 
-  for (int i = 0; i < 32; i++)
+  for (int i = 0; i < 48; i++) {
     pathArray[i] = -1;
+  }
 
   for (int i = 0; i < 4; i++) 
     gates[i] = -1;
@@ -309,7 +303,9 @@ void setup() {
   AppMPU6050getdata.MPU6050_dveInit();
   delay(2000);
   AppMPU6050getdata.MPU6050_calibration();
-  myUltrasonic.DeviceDriverSet_ULTRASONIC_Get(&ultraSonicDistance);
+  AppMPU6050getdata.MPU6050_dveGetEulerAngles(&Yaw);
+  myUltrasonic.DeviceDriverSet_ULTRASONIC_1_Get(&ultraSonicDistance1);
+  myUltrasonic.DeviceDriverSet_ULTRASONIC_2_Get(&ultraSonicDistance2);
 
   dijkstra(graph, src);
 
@@ -319,7 +315,7 @@ void setup() {
   for (int i = 0; i < 4; i++) {
     int currentGate = gates[i];
 
-    if (lowest = -1) {
+    if (lowest == -1) {
       lowest = currentGate;
       lowestIndex = i;
     } else if (dist[lowest] > dist[currentGate]) {
@@ -344,7 +340,7 @@ void setup() {
 
     if (currentGate == -1) continue;
 
-    if (lowest = -1) {
+    if (lowest == -1) {
       lowest = currentGate;
       lowestIndex = i;
     } else if (dist[lowest] > dist[currentGate]) {
@@ -358,9 +354,11 @@ void setup() {
   for (int j = 0; j < V; j++) {
     if (tempPathArray[lowest][j] == -1) break;
 
+    if (currentCounter != 0 && pathArray[currentCounter - 1] == tempPathArray[lowest][j]) continue;
+
     pathArray[currentCounter] = tempPathArray[lowest][j];
     currentCounter++;
-  }
+  }  
 
   dijkstra(graph, lowest);
 
@@ -370,7 +368,7 @@ void setup() {
 
     if (currentGate == -1) continue;
 
-    if (lowest = -1) {
+    if (lowest == -1) {
       lowest = currentGate;
       lowestIndex = i;
     } else if (dist[lowest] > dist[currentGate]) {
@@ -384,9 +382,11 @@ void setup() {
   for (int j = 0; j < V; j++) {
     if (tempPathArray[lowest][j] == -1) break;
 
+    if (currentCounter != 0 && pathArray[currentCounter - 1] == tempPathArray[lowest][j]) continue;
+
     pathArray[currentCounter] = tempPathArray[lowest][j];
     currentCounter++;
-  }
+  }  
 
   dijkstra(graph, lowest);
 
@@ -401,14 +401,18 @@ void setup() {
   for (int j = 0; j < V; j++) {
     if (tempPathArray[lowest][j] == -1) break;
 
+    if (currentCounter != 0 && pathArray[currentCounter - 1] == tempPathArray[lowest][j]) continue;
+
     pathArray[currentCounter] = tempPathArray[lowest][j];
     currentCounter++;
-  }
+  }  
 
   dijkstra(graph, lowest);
 
   for (int j = 0; j < V; j++) {
     if (tempPathArray[target][j] == -1) break;
+
+    if (currentCounter != 0 && pathArray[currentCounter - 1] == tempPathArray[target][j]) continue;
 
     pathArray[currentCounter] = tempPathArray[target][j];
     currentCounter++;
@@ -429,6 +433,8 @@ void setup() {
   for (int i = 1; i < V*4; i++) {
     int currentNode = pathArray[i - 1];
     int nextNode = pathArray[i];
+
+    Serial.println(nextNode);
 
     if (nextNode > 15 || nextNode < 0) break;
 
@@ -492,12 +498,8 @@ void setup() {
     }
 
     if (orientation != tempDirection && abs(rotations[orientation] - rotations[tempDirection]) != 180) {
-      if (abs(rotations[orientation]) == 90) {
-        targetTime -= 1.0518;
-      } else if (abs(rotations[orientation]) == 45) {
-        targetTime -= 0.5327;
-      } else if (abs(rotations[orientation]) == 135) {
-        targetTime -= 1.4737;
+      if (abs(abs(rotations[orientation]) - abs(rotations[tempDirection])) == 90) {
+        targetTime -= 1.0274;
       }
 
       carDirections[lastCounter] = orientation;
@@ -534,8 +536,6 @@ void setup() {
   for (int i = 0; i < V*4; i++) {
     if (carDirections[i] == Default) break;
 
-    Serial.println(carDirections[i]);
-
     if (carDirections[i] == Movement || carDirections[i] == BackwardsMovement) {
       totalMovement++;
     }
@@ -543,7 +543,7 @@ void setup() {
 
   speed = 150;
 
-  delayTime = (targetTime - (((48/0.0278679)*totalMovement)/1000))/(totalMovement+totalRotations) * 1000;
+  delayTime = (targetTime - (((50/0.0394048)*totalMovement)/1000))/(totalMovement+totalRotations) * 1000;
   if (delayTime < 0) {
     delayTime = 0;
   }
@@ -585,7 +585,7 @@ void turn(Directions direction) {
   }
 
   bool turnDirection = Yaw < desiredYaw;
-  while (abs(Yaw - desiredYaw) > 3) {
+  while (abs(Yaw - desiredYaw) > 1) {
     if (turnDirection) { //Right
       AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_back, /*speed_A*/ 100,
                                              /*direction_B*/ direction_just, /*speed_B*/ 100, /*controlED*/ control_enable); //Motor control
@@ -603,14 +603,36 @@ void turn(Directions direction) {
   currentTime = millis();
 }
 
+void freeTurn(float degrees) {
+  AppMPU6050getdata.MPU6050_dveGetEulerAngles(&Yaw);
+
+  float desiredYaw = Yaw + degrees;
+
+  bool turnDirection = Yaw < desiredYaw;
+  while (abs(Yaw - desiredYaw) > 1) {
+    if (turnDirection) { //Right
+      AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_back, /*speed_A*/ 75,
+                                             /*direction_B*/ direction_just, /*speed_B*/ 75, /*controlED*/ control_enable); //Motor control
+    } else if (!turnDirection) { //Left
+      AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_just, /*speed_A*/ 75,
+                                             /*direction_B*/ direction_back, /*speed_B*/ 75, /*controlED*/ control_enable); //Motor control
+    }
+    AppMPU6050getdata.MPU6050_dveGetEulerAngles(&Yaw);
+    Serial.println(Yaw);
+  }
+
+  AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_void, /*speed_A*/ 0,
+                                         /*direction_B*/ direction_void, /*speed_B*/ 0, /*controlED*/ control_enable); //Motor control
+}
+
 void loop() {
   ApplicationFunctionSet_ConquerorCarMotionControl(status, 150);
-  myUltrasonic.DeviceDriverSet_ULTRASONIC_Get(&ultraSonicDistance);
+  myUltrasonic.DeviceDriverSet_ULTRASONIC_1_Get(&ultraSonicDistance1);
 
-  if (abs(ultraSonicDistance - previousDistance) > 20 && previousDistance != 0) {
-    ultraSonicDistance = previousDistance;
+  if (abs(ultraSonicDistance1 - previousDistance) > 20 && previousDistance != 0) {
+    ultraSonicDistance1 = previousDistance;
   } else {
-    previousDistance = ultraSonicDistance;
+    previousDistance = ultraSonicDistance1;
   }
 
   if (finished) {
@@ -640,7 +662,7 @@ void loop() {
     switch (direction) {
       case Movement:
 
-        startingDistance = ultraSonicDistance;
+        startingDistance = ultraSonicDistance1;
         previousDistance = startingDistance;
 
         if (startingDistance > 150) {
@@ -666,7 +688,7 @@ void loop() {
         status = Forward;
         break;
       case BackwardsMovement:
-        startingDistance = ultraSonicDistance;
+        startingDistance = ultraSonicDistance1;
         previousDistance = startingDistance;
 
         if (startingDistance > 150) {
@@ -691,19 +713,35 @@ void loop() {
   if (status == Forward) {
     if (useOtherUltrasonic == 0) {
       if (counter == 0) {
-        distance = 40/1.25;
+        distance = 40;
       } else {
-        distance = 50/1.25;
+        distance = 50;
       }
     } else {
-      distance = 15 + (50 * (useOtherUltrasonic - 1));
+      distance = 15 + (40 * (useOtherUltrasonic - 1));
     }
   } else if (status == Backward) {
-    distance = 48/1.25;
+    distance = 52;
   }
 
   if (useOtherUltrasonic != 0 && !delayBool) {
-    if ((ultraSonicDistance < distance) && (abs(timer - currentTime) > 1000)) {
+    if ((ultraSonicDistance1 < distance) && (abs(timer - currentTime) > 1000)) {
+      int total1 = 0;
+      int total2 = 0;
+      for (int i = 0; i < 10; i++) {
+        myUltrasonic.DeviceDriverSet_ULTRASONIC_2_Get(&ultraSonicDistance2);
+        myUltrasonic.DeviceDriverSet_ULTRASONIC_1_Get(&ultraSonicDistance1);
+
+        total1 += ultraSonicDistance1;
+        total2 += ultraSonicDistance2;
+      }
+
+      float average1 = total1/10;
+      float average2 = total2/10;
+
+      float angle = 90 - (atan(5.6/(abs(average1 - average2))) * 180/PI);
+      if (average2 > average1) angle = -angle;
+
       status = stop_it;
       finished = true;
       delayBool = true;
@@ -712,7 +750,7 @@ void loop() {
       useOtherUltrasonic = 0;
     }
   } else if (!delayBool) {
-    if ((abs(timer - currentTime) > getTimeForDistance(distance) || (useUltrasonic && abs(startingDistance - ultraSonicDistance) > 45))) {
+    if ((abs(timer - currentTime) > getTimeForDistance(distance))) {
       status = stop_it;
       finished = true;
       delayBool = true;
