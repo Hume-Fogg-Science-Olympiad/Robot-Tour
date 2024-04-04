@@ -32,8 +32,10 @@ enum Directions {
   OneUltrasonicMovement, //(10)
   TwoUltrasonicMovement, //(11)
   ThreeUltrasonicMovement, //(12)
-  FourUltrasonicMovement, //(13)
-  Default     //(14)
+  OneBackwardsUltrasonicMovement, //(13)
+  TwoBackwardsUltrasonicMovement, //(14)
+  ThreeBackwardsUltrasonicMovement, //(15)
+  Default     //(16)
 };
 
 static Directions currentDirection = North;
@@ -68,7 +70,7 @@ static void ApplicationFunctionSet_ConquerorCarLinearMotionControl(ConquerorCarM
   
 
   //加入比例常数Kp
-  int R = (Yaw - yaw_So) * Kp + speed;
+  int R = (Yaw - yaw_So) * (Kp + 1) + speed;
   if (R > UpperLimit)
   {
     R = UpperLimit;
