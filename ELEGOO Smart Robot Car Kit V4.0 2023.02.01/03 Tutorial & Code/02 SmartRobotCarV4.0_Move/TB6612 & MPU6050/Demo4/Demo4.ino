@@ -815,6 +815,8 @@ void loop() {
       if (useOtherUltrasonic == 0) {
         if (counter == 0) {
           distance = 40;
+        } else if (counter == 20) {
+          distance = 57;
         } else {
           distance = 50;
         }
