@@ -28,32 +28,12 @@ void setup() {
   AppIRrecv.DeviceDriverSet_IRrecv_Init();
 }
 
-void freeTurn(float degrees) {
-  AppMPU6050getdata.MPU6050_dveGetEulerAngles(&Yaw);
-
-  float desiredYaw = Yaw + degrees;
-
-  bool turnDirection = Yaw < desiredYaw;
-  while (abs(Yaw - desiredYaw) > 1) {
-    if (turnDirection) {  //Right
-      AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_back, /*speed_A*/ 10,
-                                             /*direction_B*/ direction_just, /*speed_B*/ 10, /*controlED*/ control_enable);  //Motor control
-    } else if (!turnDirection) {                                                                                             //Left
-      AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_just, /*speed_A*/ 10,
-                                             /*direction_B*/ direction_back, /*speed_B*/ 10, /*controlED*/ control_enable);  //Motor control
-    }
-    AppMPU6050getdata.MPU6050_dveGetEulerAngles(&Yaw);
-  }
-
-  AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_void, /*speed_A*/ 0,
-                                         /*direction_B*/ direction_void, /*speed_B*/ 0, /*controlED*/ control_enable);  //Motor control
-}
-
 void loop() {
   uint8_t IRrecv_button;
   static bool IRrecv_en = false;
 
   AppIRrecv.DeviceDriverSet_IRrecv_Get(&IRrecv_button /*out*/);
+  Serial.println(IRrecv_button);
   switch (IRrecv_button) {
     case /* constant-expression */ 1:
       /* code */
@@ -65,12 +45,10 @@ void loop() {
       break;
     case /* constant-expression */ 3:
       /* code */
-      Serial.println("Left");
       status = Left;
       break;
     case /* constant-expression */ 4:
       /* code */
-      Serial.println("Right");
       status = Right;
       break;
     case /* constant-expression */ 5:
@@ -91,15 +69,14 @@ void loop() {
       break;
   }
 
-  if (status != Left || status != Right) {
+  if (status != Left && status != Right) {
     ApplicationFunctionSet_ConquerorCarMotionControl(status, 250);
   } else if (status == Left) {
-    delay(1000);
-    freeTurn(Yaw - 15);
+      AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_just, /*speed_A*/ 75,
+                                             /*direction_B*/ direction_back, /*speed_B*/ 75, /*controlED*/ control_enable);
   } else if (status == Right) {
-    delay(1000);
-    freeTurn(Yaw + 15);
+      AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_back, /*speed_A*/ 75,
+                                             /*direction_B*/ direction_just, /*speed_B*/ 75, /*controlED*/ control_enable);
   }
-
-  status = stop_it;
+  AppMPU6050getdata.MPU6050_dveGetEulerAngles(&Yaw);
 }

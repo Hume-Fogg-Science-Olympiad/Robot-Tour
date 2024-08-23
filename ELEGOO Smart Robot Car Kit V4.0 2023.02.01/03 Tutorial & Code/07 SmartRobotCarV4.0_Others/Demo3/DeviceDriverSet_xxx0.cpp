@@ -15,28 +15,33 @@ void DeviceDriverSet_IRrecv::DeviceDriverSet_IRrecv_Init(void)
 {
   irrecv.enableIRIn(); //Enable infrared communication NEC
 }
+
+uint8_t formerIRrecv_Button = 5;
+int counter = 0;
 bool DeviceDriverSet_IRrecv::DeviceDriverSet_IRrecv_Get(uint8_t *IRrecv_Get /*out*/)
 {
   if (irrecv.decode(&results))
   {
+    counter = 0;
+
     IR_PreMillis = millis();
     switch (results.value)
     {
     case /* constant-expression */ aRECV_upper:
     case /* constant-expression */ bRECV_upper:
-      /* code */ *IRrecv_Get = 1;
+      /* code */ formerIRrecv_Button = 1;
       break;
     case /* constant-expression */ aRECV_lower:
     case /* constant-expression */ bRECV_lower:
-      /* code */ *IRrecv_Get = 2;
+      /* code */ formerIRrecv_Button = 2;
       break;
     case /* constant-expression */ aRECV_Left:
     case /* constant-expression */ bRECV_Left:
-      /* code */ *IRrecv_Get = 3;
+      /* code */ formerIRrecv_Button = 3;
       break;
     case /* constant-expression */ aRECV_right:
     case /* constant-expression */ bRECV_right:
-      /* code */ *IRrecv_Get = 4;
+      /* code */ formerIRrecv_Button = 4;
       break;
     case /* constant-expression */ aRECV_ok:
     case /* constant-expression */ bRECV_ok:
@@ -68,7 +73,8 @@ bool DeviceDriverSet_IRrecv::DeviceDriverSet_IRrecv_Get(uint8_t *IRrecv_Get /*ou
       /* code */ *IRrecv_Get = 11;
       break;
     default:
-      // *IRrecv_Get = 5;
+      Serial.println(formerIRrecv_Button);
+      *IRrecv_Get = formerIRrecv_Button;
       irrecv.resume();
       return false;
       break;
@@ -78,8 +84,16 @@ bool DeviceDriverSet_IRrecv::DeviceDriverSet_IRrecv_Get(uint8_t *IRrecv_Get /*ou
   }
   else
   {
+    counter++;
+    if (counter > 40) {
+      formerIRrecv_Button = 5;
+      counter = 0;
+    }
+    *IRrecv_Get = formerIRrecv_Button;
     return false;
   }
+
+  delay(500);
 }
 
 #if _Test_DeviceDriverSet

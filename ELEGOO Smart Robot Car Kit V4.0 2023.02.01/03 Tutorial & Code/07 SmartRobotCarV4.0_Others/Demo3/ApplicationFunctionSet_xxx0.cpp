@@ -64,9 +64,15 @@ struct Application_xxx
 
 static void ApplicationFunctionSet_ConquerorCarLinearMotionControl(ConquerorCarMotionControl direction, uint8_t directionRecord, uint8_t speed, uint8_t Kp, uint8_t UpperLimit)
 {
+  AppMPU6050getdata.MPU6050_dveGetEulerAngles(&Yaw);
   static float yaw_So = Yaw;
+
   static uint8_t en = 110;
   static unsigned long is_time;
+
+  yaw_So = Yaw;
+  yaw_So = Yaw;
+  yaw_So = Yaw;
 
   if (en != directionRecord || millis() - is_time > 10)
   {
