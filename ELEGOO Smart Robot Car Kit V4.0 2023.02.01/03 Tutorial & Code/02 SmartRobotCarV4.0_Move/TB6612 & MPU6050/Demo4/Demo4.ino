@@ -7,13 +7,13 @@
 
 //Input values (Grid, target time, etc...)
 const char string_0[] PROGMEM = ".-.-.-.-.";
-const char string_1[] PROGMEM = "|G| BGBG|";
-const char string_2[] PROGMEM = ".B.-.-.-.";
-const char string_3[] PROGMEM = "| | | | |";
-const char string_4[] PROGMEM = ".-.-.B.B.";
+const char string_1[] PROGMEM = "|G| | |G|";
+const char string_2[] PROGMEM = ".-.-.-.-.";
+const char string_3[] PROGMEM = "| |G| | |";
+const char string_4[] PROGMEM = ".-.-.-.-.";
 const char string_5[] PROGMEM = "| | | |X|";
 const char string_6[] PROGMEM = ".-.-.-.-.";
-const char string_7[] PROGMEM = "| BGB B S";
+const char string_7[] PROGMEM = "| |G| | S";
 const char string_8[] PROGMEM = ".-.-.-.-.";
 
 const char *const grid[] PROGMEM = {string_0, string_1, string_2, string_3, string_4, string_5, string_6, string_7, string_8};
@@ -328,8 +328,11 @@ void setup() {
   int lowestIndex = 0;
   //Creation of the node-to-node path using djikstra's
   {
+    //Run dijkstra to generate the distance from the target node to all other node
+    //We are finding the distance from target to gate because we are working backwards, we want to end up at the gate closest to the end once we are done moving
     dijkstra(graph, target);
 
+    //Find the closest gate
     for (int i = 0; i < 4; i++) {
       int currentGate = gates[i];
 
@@ -343,6 +346,7 @@ void setup() {
     }
     gates[lowestIndex] = -1;
 
+    //Add the path from target to closest gate to the array
     for (int j = 0; j < V; j++) {
       if (tempPathArray[lowest][j] == -1) break;
 
@@ -350,6 +354,7 @@ void setup() {
       currentCounter++;
     }
 
+    //Run dijkstra again to find next closest gate
     dijkstra(graph, lowest);
 
     lowest = -1;
@@ -369,15 +374,18 @@ void setup() {
 
     gates[lowestIndex] = -1;
 
+    //Add the path from target to closest gate to the array
     for (int j = 0; j < V; j++) {
       if (tempPathArray[lowest][j] == -1) break;
 
+      //Avoid repeating the same instructions
       if (currentCounter != 0 && pathArray[currentCounter - 1] == tempPathArray[lowest][j]) continue;
 
       pathArray[currentCounter] = tempPathArray[lowest][j];
       currentCounter++;
     }  
 
+    //Same idea again
     dijkstra(graph, lowest);
 
     lowest = -1;
