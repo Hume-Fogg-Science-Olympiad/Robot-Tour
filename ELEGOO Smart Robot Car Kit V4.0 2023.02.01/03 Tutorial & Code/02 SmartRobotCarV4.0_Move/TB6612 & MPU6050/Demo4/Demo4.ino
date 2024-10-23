@@ -6,19 +6,22 @@
 //https://www.youtube.com/watch?v=LrsTBWf6Wsc Helpful youtube video about odometry (how to get position and orientation of a robot based on simple values)
 
 //Input values (Grid, target time, etc...)
-const char string_0[] PROGMEM = ".-.-.-.-.";
-const char string_1[] PROGMEM = "|G| | |G|";
-const char string_2[] PROGMEM = ".-.-.-.-.";
-const char string_3[] PROGMEM = "| |G| | |";
-const char string_4[] PROGMEM = ".-.-.-.-.";
-const char string_5[] PROGMEM = "| | | |X|";
-const char string_6[] PROGMEM = ".-.-.-.-.";
-const char string_7[] PROGMEM = "| |G| | S";
-const char string_8[] PROGMEM = ".-.-.-.-.";
+const char string_0[] PROGMEM =  ".-.-.-.-.";
+const char string_1[] PROGMEM =  "|G| | |G|";
+const char string_2[] PROGMEM =  ".-.-.-.-.";
+const char string_3[] PROGMEM =  "| |G| | |";
+const char string_4[] PROGMEM =  ".-.-.-.-.";
+const char string_5[] PROGMEM =  "| | | |X|";
+const char string_6[] PROGMEM =  ".-.-.-.-.";
+const char string_7[] PROGMEM =  "| |G| | |";
+const char string_8[] PROGMEM =  ".-.-.-.-.";
+const char string_9[] PROGMEM =  "| | | | |";
+const char string_10[] PROGMEM = ".-.-.S.-.";
 
-const char *const grid[] PROGMEM = {string_0, string_1, string_2, string_3, string_4, string_5, string_6, string_7, string_8};
+const char *const grid[] PROGMEM = {string_0, string_1, string_2, string_3, string_4, string_5, string_6, string_7, string_8, string_9, string_10};
 
 float targetTime = 50;
+//Experimental feature where the ultrasonic is used for distances over ~100 cm (doesn't work well)
 bool useLongUltrasonic = false;
 
 //Intialization of default values
@@ -28,14 +31,15 @@ MPU6050_getdata AppMPU6050getdata;
 
 int timer = 0;
 ConquerorCarMotionControl status = stop_it;
-Directions* carDirections = (Directions*)malloc((V*5) * sizeof(int));
+Directions* carDirections = (Directions*)malloc((V*4) * sizeof(byte));
 int src = 0;
 int target = 0;
 
-int* gates = (int*)malloc((4) * sizeof(int));
+byte* gates = (byte*)malloc((4) * sizeof(byte));
 Directions startingDirection = East;
-int (*graph)[V] = malloc(sizeof(int[V][V]));
+byte (*graph)[V] = malloc(sizeof(byte[V][V]));
 
+//So many default values
 char buffer[0];
 bool onBottomSide;
 bool onTopSide;
@@ -66,8 +70,10 @@ int previousDistance1 = 0;
 int previousDistance2 = 0;
 
 int useUltrasonic = 0;
-int useOtherUltrasonic = false;
+bool useOtherUltrasonic = false;
 
+//Extrapolation for how much a time a certain distance will take
+//Doesnt work very well either (need to figure out encoders)
 float getTimeForDistance(float distance) {
   float slope;
   if (speed == 150) {
@@ -85,30 +91,34 @@ void setup() {
       for (int j = 0; j < V; j++)
         graph[i][j] = 0;
 
+    //Have to use -1 because 0 is a node index
     for (int i = 0; i < 48; i++) {
       pathArray[i] = -1;
     }
 
     for (int i = 0; i < 4; i++) { 
-      gates[i] = -1;
+      gates[i] = 255;
     }
   }
 
   //Setup of the grid/gates/directions
   {
-    for (int y = 1; y < 9; y += 2) {
+    //Step through the string representation of the grid
+    //Increment by 2 bcuz of the dividing lines |
+    for (int y = 1; y < 11; y += 2) {
       for (int x = 1; x < 9; x += 2) {
-        strcpy_P(buffer, (char *)pgm_read_ptr(&(grid[y])));  // Necessary casts and dereferencing, just copy.
+        //Literally have no clue how this works, just copied from somewhere
+        //What it does is converts the string from PROG_MEM into something actually readable
+        strcpy_P(buffer, (char *)pgm_read_ptr(&(grid[y]))); 
         currentChar = buffer[x];
-
 
         leftChar = buffer[x - 1];
         rightChar = buffer[x + 1];
 
-        strcpy_P(buffer, (char *)pgm_read_ptr(&(grid[y + 1])));  // Necessary casts and dereferencing, just copy.
+        strcpy_P(buffer, (char *)pgm_read_ptr(&(grid[y + 1])));  
         downChar = buffer[x];
 
-        strcpy_P(buffer, (char *)pgm_read_ptr(&(grid[y - 1])));  // Necessary casts and dereferencing, just copy.
+        strcpy_P(buffer, (char *)pgm_read_ptr(&(grid[y - 1])));  
         upChar = buffer[x];
 
         onLeftSide = x - 2 < 0;
@@ -116,14 +126,16 @@ void setup() {
         onTopSide = y - 2 < 0;
         onBottomSide = y + 2 >= 9;
 
+        //Formula to switch from x and y indices to a node number
         place = (4 * (0.5*((float) y)-0.5)) + (0.5*((float) x)-0.5);
 
+        //Initially set the distances to all adjacent nodes
         if (!onLeftSide) graph[place][place - 1] = 2;
         if (!onRightSide) graph[place][place + 1] = 2;
         if (!onTopSide) graph[place][place - 4] = 2;
         if (!onBottomSide) graph[place][place + 4] = 2;
 
-
+        //Check the adjacent lines for 'S' (Char code 83 is S) then mark that as src
         if ((int) upChar == 83) {
           src = place;
           startingDirection = South;
@@ -138,127 +150,27 @@ void setup() {
           startingDirection = West;
         }
 
-        if ((int) upChar == 66) {
+        //If there is a 'B' (Char code 66 is 'B') on the left/right/top/bottom remove the connection between the nodes
+        if ((int) upChar == 66 && !onTopSide) {
           graph[place][place - 4] = 0;
-
-          if (!onLeftSide) {
-            graph[place][place - 4 - 1] = 0;
-          }
-
-          if (!onRightSide) {
-            graph[place][place - 4 + 1] = 0;
-          }
-        } else if (!onTopSide) {
-          strcpy_P(buffer, (char *)pgm_read_ptr(&(grid[y - 2])));  // Necessary casts and dereferencing, just copy.
-          char topLeftChar = buffer[x - 1];
-          char topRightChar = buffer[x + 1];
-
-          if ((int) topLeftChar == 66) {
-            if (!onLeftSide) {
-              graph[place][place - 4 - 1] = 0;
-            }
-          }
-
-          if ((int) topRightChar == 66) {
-            if (!onRightSide) {
-              graph[place][place - 4 + 1] = 0;
-            }
-          }
         }
-
-        if ((int) downChar == 66) {
+        if ((int) downChar == 66 && !onBottomSide) {
           graph[place][place + 4] = 0;
-
-          if (!onLeftSide) {
-            graph[place][place + 4 - 1] = 0;
-          }
-
-          if (!onRightSide) {
-            graph[place][place + 4 + 1] = 0;
-          }
-        } else if (!onBottomSide) {
-          strcpy_P(buffer, (char *)pgm_read_ptr(&(grid[y + 2])));  // Necessary casts and dereferencing, just copy.
-          char downLeftChar = buffer[x - 1];
-          char downRightChar = buffer[x + 1];
-
-          if ((int) downLeftChar == 66) {
-            if (!onLeftSide) {
-              graph[place][place + 4 - 1] = 0;
-            }
-          }
-
-          if ((int) downRightChar == 66) {
-            if (!onRightSide) {
-              graph[place][place + 4 + 1] = 0;
-            }
-          }
         }
-
-        if ((int) leftChar == 66) {
+        if ((int) leftChar == 66 && !onLeftSide) {
           graph[place][place - 1] = 0;
-
-          if (!onBottomSide) {
-            graph[place][place - 1 + 4] = 0;
-          }
-
-          if (!onTopSide) {
-            graph[place][place - 1 - 4] = 0;
-          }
-        } else if (!onLeftSide) {
-          strcpy_P(buffer, (char *)pgm_read_ptr(&(grid[y - 1])));  // Necessary casts and dereferencing, just copy.
-          char leftUpChar = buffer[x - 2];
-
-          strcpy_P(buffer, (char *)pgm_read_ptr(&(grid[y + 1])));  // Necessary casts and dereferencing, just copy.
-          char leftDownChar = buffer[x - 2];
-
-          if ((int) leftUpChar == 66) {
-            if (!onTopSide) {
-              graph[place][place - 1 - 4] = 0;
-            }
-          }
-
-          if ((int) leftDownChar == 66) {
-            if (!onBottomSide) {
-              graph[place][place - 1 + 4] = 0;
-            }
-          }
         }
         if ((int) rightChar == 66) {
           graph[place][place + 1] = 0;
-
-          if (!onBottomSide) {
-            graph[place][place + 1 - 4] = 0;
-          }
-
-          if (!onTopSide) {
-            graph[place][place + 1 + 4] = 0;
-          }
-        } else if (!onRightSide) {
-          strcpy_P(buffer, (char *)pgm_read_ptr(&(grid[y - 1])));  // Necessary casts and dereferencing, just copy.
-          char rightUpChar = buffer[x + 2];
-
-          strcpy_P(buffer, (char *)pgm_read_ptr(&(grid[y + 1])));  // Necessary casts and dereferencing, just copy.
-          char rightDownChar = buffer[x + 2];
-
-          if ((int) rightUpChar == 66) {
-            if (!onTopSide) {
-              graph[place][place + 1 - 4] = 0;
-            }
-          }
-
-          if ((int) rightDownChar == 66) {
-            if (!onBottomSide) {
-              graph[place][place + 1 + 4] = 0;
-            }
-          }
         }
 
-        if ((int) currentChar == 88) {
+        
+        if ((int) currentChar == 88) { //(Char code 88 is X) Sets the target variable if 'X' is in the current node
           target = place;
-        } else if ((int) currentChar == 71) {
+        } else if ((int) currentChar == 71) { //Sets the gate variables if the current char is 'G'
           for (int j = 0; j < 4; j++) {
-            if (gates[j] == -1) {
-              if (gates[2] == 0) gates[2] = -1;
+            if (gates[j] == 255) {
+              if (gates[2] == 0) gates[2] = 255; //Dumb arduino stuff was giving a weird value to the third index idk why
 
               gates[j] = place; 
               break;
@@ -268,6 +180,7 @@ void setup() {
       }
     }
 
+    //Based on which direction you start on the src, set the correct relative angles
     switch (startingDirection) {
       case South:
         rotations[0] = -180;
@@ -344,11 +257,11 @@ void setup() {
         lowestIndex = i;
       }
     }
-    gates[lowestIndex] = -1;
+    gates[lowestIndex] = 255;
 
     //Add the path from target to closest gate to the array
     for (int j = 0; j < V; j++) {
-      if (tempPathArray[lowest][j] == -1) break;
+      if (tempPathArray[lowest][j] == 255) break;
 
       pathArray[currentCounter] = tempPathArray[lowest][j];
       currentCounter++;
@@ -361,7 +274,7 @@ void setup() {
     for (int i = 0; i < 4; i++) {
       int currentGate = gates[i];
 
-      if (currentGate == -1) continue;
+      if (currentGate == 255) continue;
 
       if (lowest == -1) {
         lowest = currentGate;
@@ -372,11 +285,11 @@ void setup() {
       }
     }
 
-    gates[lowestIndex] = -1;
+    gates[lowestIndex] = 255;
 
     //Add the path from target to closest gate to the array
     for (int j = 0; j < V; j++) {
-      if (tempPathArray[lowest][j] == -1) break;
+      if (tempPathArray[lowest][j] == 255) break;
 
       //Avoid repeating the same instructions
       if (currentCounter != 0 && pathArray[currentCounter - 1] == tempPathArray[lowest][j]) continue;
@@ -392,7 +305,7 @@ void setup() {
     for (int i = 0; i < 4; i++) {
       int currentGate = gates[i];
 
-      if (currentGate == -1) continue;
+      if (currentGate == 255) continue;
 
       if (lowest == -1) {
         lowest = currentGate;
@@ -403,10 +316,10 @@ void setup() {
       }
     }
 
-    gates[lowestIndex] = -1;
+    gates[lowestIndex] = 255;
 
     for (int j = 0; j < V; j++) {
-      if (tempPathArray[lowest][j] == -1) break;
+      if (tempPathArray[lowest][j] == 255) break;
 
       if (currentCounter != 0 && pathArray[currentCounter - 1] == tempPathArray[lowest][j]) continue;
 
@@ -418,14 +331,14 @@ void setup() {
 
     for (int i = 0; i < 4; i++) {
       int currentGate = gates[i];
-      if (currentGate != -1) {
+      if (currentGate != 255) {
         lowest = currentGate;
         break;
       } 
     }
 
     for (int j = 0; j < V; j++) {
-      if (tempPathArray[lowest][j] == -1) break;
+      if (tempPathArray[lowest][j] == 255) break;
 
       if (currentCounter != 0 && pathArray[currentCounter - 1] == tempPathArray[lowest][j]) continue;
 
@@ -436,7 +349,7 @@ void setup() {
     dijkstra(graph, lowest);
 
     for (int j = 0; j < V; j++) {
-      if (tempPathArray[src][j] == -1) break;
+      if (tempPathArray[src][j] == 255) break;
 
       if (currentCounter != 0 && pathArray[currentCounter - 1] == tempPathArray[src][j]) continue;
 
@@ -466,23 +379,25 @@ void setup() {
 
       Serial.println(currentNode);
 
-      if (nextNode > 15 || nextNode < 0) break;
+      //If for some reason pathArray has invalid nodes
+      if (nextNode > 19 || nextNode < 0) break;
 
       int difference = currentNode - nextNode;
 
+      //Using difference, find if the robot needs to turn and if ultrasonic is usable
       Directions orientation;
       if (difference == -4) {
         orientation = South;
         int tempNode = nextNode;
 
         if (!useLongUltrasonic) {
-          if (tempNode + 4 <= 15) {
+          if (tempNode + 4 <= 19) {
             if (graph[tempNode][tempNode + 4] == 0) {
               ultrasonicMovement = ultrasonicCounter;
             }
           }
         } else {
-          while (tempNode + 4 <= 15) {
+          while (tempNode + 4 <= 19) {
             if (graph[tempNode][tempNode + 4] == 0) {
               ultrasonicMovement = ultrasonicCounter;
               break;
@@ -559,6 +474,7 @@ void setup() {
         continue;
       }
 
+      //IDK really whats going on here but I think its decreasing the estimated amount of time a rotation takes from the timer
       if (orientation != tempDirection && abs(rotations[orientation] - rotations[tempDirection]) != 180) {
         if (abs(abs(rotations[orientation]) - abs(rotations[tempDirection])) == 90) {
           targetTime -= 1.0274;
@@ -571,6 +487,7 @@ void setup() {
         totalRotations++;
       }
 
+      //Determines the type of movement forward that we should use (Ultrasonic/Long Ultrasonic/Normal)
       if (abs(rotations[orientation] - rotations[tempDirection]) == 180) {
         if (ultrasonicMovement == 1) {
           carDirections[lastCounter] = OneBackwardsUltrasonicMovement;
@@ -589,6 +506,7 @@ void setup() {
         carDirections[lastCounter] = Movement;
       }
 
+      //Incrementing counter and resetting variables
       lastCounter++; 
       ultrasonicMovement = 0;
       ultrasonicCounter = 1;
@@ -622,7 +540,7 @@ void setup() {
     delayTime = (targetTime - (((50/0.0394048)*totalMovement)/1000))/(totalMovement - 1 + totalRotations) * 1000;
     if (delayTime < 0) {
       delayTime = 0;
-    } else if (delayTime > 3000) {
+    } else if (delayTime > 3000) { //If the delay time is over 3 seconds (will result in a penalty), bump it down to 2.5
       delayTime = 2500;
     }
   }

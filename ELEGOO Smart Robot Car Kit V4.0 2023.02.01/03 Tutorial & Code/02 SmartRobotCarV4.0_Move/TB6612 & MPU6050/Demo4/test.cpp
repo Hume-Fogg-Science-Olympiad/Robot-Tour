@@ -6,10 +6,10 @@ using namespace std;
 #include "MPU6050_getdata.h"
 
 // Number of vertices in the graph
-#define V 16
+const byte V = 20;
 
-static int tempPathArray[V][V];
-static int* pathArray = (int*)malloc((48) * sizeof(int));
+static byte tempPathArray[V][V];
+static byte* pathArray = (byte*)malloc((48) * sizeof(byte));
 
 static int dist[V]; // The output array. dist[i] will hold the
 			// shortest
@@ -43,7 +43,7 @@ static void printSolution(int dist[])
 // Function that implements Dijkstra's single source
 // shortest path algorithm for a graph represented using
 // adjacency matrix representation
-static void dijkstra(int graph[V][V], int src)
+static void dijkstra(byte graph[V][V], int src)
 {
 	bool sptSet[V]; // sptSet[i] will be true if vertex i is
 					// included in shortest
@@ -52,7 +52,7 @@ static void dijkstra(int graph[V][V], int src)
 
   for (int i = 0; i < V; i++) 
     for (int j = 0; j < V; j++)
-      tempPathArray[i][j] = -1;
+      tempPathArray[i][j] = 255;
 
 	// Initialize all distances as INFINITE and stpSet[] as
 	// false
@@ -86,7 +86,7 @@ static void dijkstra(int graph[V][V], int src)
 				&& dist[u] + graph[u][v] < dist[v]) {
           int lastIndex = -1;
           for (int j = 0; j < V; j++) {
-            if (tempPathArray[u][j] != -1) {
+            if (tempPathArray[u][j] != 255) {
               tempPathArray[v][j] = tempPathArray[u][j];
             } else {
               lastIndex = j;
