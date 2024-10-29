@@ -124,7 +124,7 @@ void setup() {
         onLeftSide = x - 2 < 0;
         onRightSide = x + 2 >= 9;
         onTopSide = y - 2 < 0;
-        onBottomSide = y + 2 >= 9;
+        onBottomSide = y + 2 >= 11;
 
         //Formula to switch from x and y indices to a node number
         place = (4 * (0.5*((float) y)-0.5)) + (0.5*((float) x)-0.5);

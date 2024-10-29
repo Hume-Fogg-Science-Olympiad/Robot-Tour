@@ -45,8 +45,7 @@ static void printSolution(int dist[])
 // adjacency matrix representation
 static void dijkstra(byte graph[V][V], int src)
 {
-	bool sptSet[V]; // sptSet[i] will be true if vertex i is
-					// included in shortest
+	bool sptSet[V]; // sptSet[i] will be true if vertex i is included in shortest
 	// path tree or shortest distance from src to i is
 	// finalized
 
@@ -64,7 +63,7 @@ static void dijkstra(byte graph[V][V], int src)
   tempPathArray[src][0] = src;
 
 	// Find shortest path for all vertices
-	for (int count = 0; count < V - 1; count++) {
+	for (int count = 0; count < V; count++) {
 		// Pick the minimum distance vertex from the set of
 		// vertices not yet processed. u is always equal to
 		// src in the first iteration.
@@ -75,12 +74,13 @@ static void dijkstra(byte graph[V][V], int src)
 
 		// Update dist value of the adjacent vertices of the
 		// picked vertex.
-		for (int v = 0; v < V; v++)
+		for (int v = 0; v < V; v++) {
 
 			// Update dist[v] only if is not in sptSet,
 			// there is an edge from u to v, and total
 			// weight of path from src to v through u is
 			// smaller than current value of dist[v]
+
 			if (!sptSet[v] && graph[u][v]
 				&& dist[u] != 100
 				&& dist[u] + graph[u][v] < dist[v]) {
@@ -97,6 +97,7 @@ static void dijkstra(byte graph[V][V], int src)
 
 				  dist[v] = dist[u] + graph[u][v];
       }
+    }
 	}
 }
 
