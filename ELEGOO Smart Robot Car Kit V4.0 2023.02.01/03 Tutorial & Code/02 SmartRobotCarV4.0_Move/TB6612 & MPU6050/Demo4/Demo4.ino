@@ -588,38 +588,28 @@ void turn(Directions direction) {
 
   bool turnDirection = Yaw < desiredYaw;
 
-  double m_kP = 0.01;
-  int lowerBound = 50;
-  int upperBound = 60;
-  while (abs(Yaw - desiredYaw) > 0.1) {
-    int R = (Yaw - desiredYaw) * m_kP * lowerBound;
-    int L = (Yaw - desiredYaw) * m_kP * lowerBound;
+  double m_kP = 0.35;
+  int lowerBound = 40;
+  int upperBound = 100;
+  while (abs(Yaw - desiredYaw) > 0.3) {
+    int speed = lowerBound + abs((Yaw - desiredYaw) / m_kP);
 
-    if (abs(R) < lowerBound) {
-      if (R < 0) R = -lowerBound;
-      else if (R >= 0) R = lowerBound;
-    } else if (abs(R) > upperBound) {
-      if (R < 0) R = -upperBound;
-      else if (R >= 0) R = upperBound;
+    if (speed < lowerBound) {
+      speed = lowerBound;
+    } else if (speed > upperBound) {
+      speed = upperBound;
     }
-    
-    if (abs(L) < lowerBound) {
-      if (L < 0) L = -lowerBound;
-      else if (L >= 0) L = lowerBound;
-    } else if (abs(L) > upperBound) {
-      if (L < 0) L = -upperBound;
-      else if (L >= 0) L = upperBound;
-    }
+
+    turnDirection = Yaw < desiredYaw;
 
     if (turnDirection) { //Right
-      AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_back, /*speed_A*/ R,
-                                             /*direction_B*/ direction_just, /*speed_B*/ L, /*controlED*/ control_enable); //Motor control
+      AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_back, /*speed_A*/ speed,
+                                             /*direction_B*/ direction_just, /*speed_B*/ speed, /*controlED*/ control_enable); //Motor control
     } else if (!turnDirection) { //Left
-      AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_just, /*speed_A*/ L,
-                                             /*direction_B*/ direction_back, /*speed_B*/ R, /*controlED*/ control_enable); //Motor control
+      AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_just, /*speed_A*/ speed,
+                                             /*direction_B*/ direction_back, /*speed_B*/ speed, /*controlED*/ control_enable); //Motor control
     }
     AppMPU6050getdata.MPU6050_dveGetEulerAngles(&Yaw);
-    Serial.println(Yaw);
   }
 
   AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_void, /*speed_A*/ 0,
@@ -652,170 +642,165 @@ void freeTurn(float degrees) {
 }
 
 void loop() {
-  turn(North);
-  AppMPU6050getdata.MPU6050_dveGetEulerAngles(&Yaw); 
-  Serial.print(Yaw);
-  Serial.println("Finished");
+  ApplicationFunctionSet_ConquerorCarMotionControl(status, 150);
 
-  // ApplicationFunctionSet_ConquerorCarMotionControl(status, 150);
+  //Handling of Ultrasonic values
+  {
+    myUltrasonic.DeviceDriverSet_ULTRASONIC_1_Get(&ultraSonicDistance1);
+    myUltrasonic.DeviceDriverSet_ULTRASONIC_2_Get(&ultraSonicDistance2);
 
-  // //Handling of Ultrasonic values
-  // {
-  //   myUltrasonic.DeviceDriverSet_ULTRASONIC_1_Get(&ultraSonicDistance1);
-  //   myUltrasonic.DeviceDriverSet_ULTRASONIC_2_Get(&ultraSonicDistance2);
+    if (abs(ultraSonicDistance1 - previousDistance1) > 20 && previousDistance1 != 0) {
+      ultraSonicDistance1 = previousDistance1;
+    } else {
+      previousDistance1 = ultraSonicDistance1;
+    }
 
-  //   if (abs(ultraSonicDistance1 - previousDistance1) > 20 && previousDistance1 != 0) {
-  //     ultraSonicDistance1 = previousDistance1;
-  //   } else {
-  //     previousDistance1 = ultraSonicDistance1;
-  //   }
+    if (abs(ultraSonicDistance2 - previousDistance2) > 20 && previousDistance2 != 0) {
+      ultraSonicDistance2 = previousDistance2;
+    } else {
+      previousDistance2 = ultraSonicDistance2;
+    }
+  }
 
-  //   if (abs(ultraSonicDistance2 - previousDistance2) > 20 && previousDistance2 != 0) {
-  //     ultraSonicDistance2 = previousDistance2;
-  //   } else {
-  //     previousDistance2 = ultraSonicDistance2;
-  //   }
-  // }
+  if (carDirections[counter] == Default) return;
 
-  // if (carDirections[counter] == Default) return;
+  timer = millis();
 
-  // timer = millis();
+  //Handling of calibrating stops
+  {
+    if (delayBool) {
+      AppMPU6050getdata.MPU6050_dveGetEulerAngles(&Yaw);
+      if (delayTime == 0) {
+        previousDistance1 = 0;
+        delayBool = false;
+        counter++;
+      } else if (abs(currentTime - timer) >= delayTime) {
+        previousDistance1 = 0;
+        counter++;
+        delayBool = false;
+      }
+    }
+  }
 
-  // //Handling of calibrating stops
-  // {
-  //   if (delayBool) {
-  //     AppMPU6050getdata.MPU6050_dveGetEulerAngles(&Yaw);
-  //     if (delayTime == 0) {
-  //       previousDistance1 = 0;
-  //       delayBool = false;
-  //       counter++;
-  //     } else if (abs(currentTime - timer) >= delayTime) {
-  //       previousDistance1 = 0;
-  //       counter++;
-  //       delayBool = false;
-  //     }
-  //   }
-  // }
+  //Handling of each individual car direction
+  {
+    if (counter != formerCounter && !delayBool) {
+      formerCounter = counter;
+      Directions direction = carDirections[counter];
+      switch (direction) {
+        case Movement:
 
-  // //Handling of each individual car direction
-  // {
-  //   if (counter != formerCounter && !delayBool) {
-  //     formerCounter = counter;
-  //     Directions direction = carDirections[counter];
-  //     switch (direction) {
-  //       case Movement:
+          previousDistance1 = ultraSonicDistance1;
+          previousDistance2 = ultraSonicDistance2;
 
-  //         previousDistance1 = ultraSonicDistance1;
-  //         previousDistance2 = ultraSonicDistance2;
+          status = Forward;
+          break;
+        case OneUltrasonicMovement:
+          previousDistance1 = ultraSonicDistance1;
+          previousDistance2 = ultraSonicDistance2;
+          useOtherUltrasonic = 1;
+          status = Forward;
+          break;
+        case TwoUltrasonicMovement:
+          previousDistance1 = ultraSonicDistance1;
+          previousDistance2 = ultraSonicDistance2;
+          useOtherUltrasonic = 2;
+          status = Forward;
+          break;
+        case ThreeUltrasonicMovement:
+          previousDistance1 = ultraSonicDistance1;
+          previousDistance2 = ultraSonicDistance2;
+          useOtherUltrasonic = 3;
+          status = Forward;
+          break;
+        case BackwardsMovement:
+          previousDistance1 = ultraSonicDistance1;
+          previousDistance2 = ultraSonicDistance2;
 
-  //         status = Forward;
-  //         break;
-  //       case OneUltrasonicMovement:
-  //         previousDistance1 = ultraSonicDistance1;
-  //         previousDistance2 = ultraSonicDistance2;
-  //         useOtherUltrasonic = 1;
-  //         status = Forward;
-  //         break;
-  //       case TwoUltrasonicMovement:
-  //         previousDistance1 = ultraSonicDistance1;
-  //         previousDistance2 = ultraSonicDistance2;
-  //         useOtherUltrasonic = 2;
-  //         status = Forward;
-  //         break;
-  //       case ThreeUltrasonicMovement:
-  //         previousDistance1 = ultraSonicDistance1;
-  //         previousDistance2 = ultraSonicDistance2;
-  //         useOtherUltrasonic = 3;
-  //         status = Forward;
-  //         break;
-  //       case BackwardsMovement:
-  //         previousDistance1 = ultraSonicDistance1;
-  //         previousDistance2 = ultraSonicDistance2;
+          status = Backward;
+          break;
+        case OneBackwardsUltrasonicMovement:
+          previousDistance1 = ultraSonicDistance1;
+          previousDistance2 = ultraSonicDistance2;
+          useOtherUltrasonic = 1;
+          status = Backward;
+          break;
+        case TwoBackwardsUltrasonicMovement:
+          previousDistance1 = ultraSonicDistance1;
+          previousDistance2 = ultraSonicDistance2;
+          useOtherUltrasonic = 2;
+          status = Backward;
+          break;
+        case ThreeBackwardsUltrasonicMovement:
+          previousDistance1 = ultraSonicDistance1;
+          previousDistance2 = ultraSonicDistance2;
+          useOtherUltrasonic = 3;
+          status = Backward;
+          break;
+        case Default:
+          status = stop_it;
+          break;
+        default:
+          turn(direction);
+          currentDirection = direction;
+          break;
+      }
 
-  //         status = Backward;
-  //         break;
-  //       case OneBackwardsUltrasonicMovement:
-  //         previousDistance1 = ultraSonicDistance1;
-  //         previousDistance2 = ultraSonicDistance2;
-  //         useOtherUltrasonic = 1;
-  //         status = Backward;
-  //         break;
-  //       case TwoBackwardsUltrasonicMovement:
-  //         previousDistance1 = ultraSonicDistance1;
-  //         previousDistance2 = ultraSonicDistance2;
-  //         useOtherUltrasonic = 2;
-  //         status = Backward;
-  //         break;
-  //       case ThreeBackwardsUltrasonicMovement:
-  //         previousDistance1 = ultraSonicDistance1;
-  //         previousDistance2 = ultraSonicDistance2;
-  //         useOtherUltrasonic = 3;
-  //         status = Backward;
-  //         break;
-  //       case Default:
-  //         status = stop_it;
-  //         break;
-  //       default:
-  //         turn(direction);
-  //         currentDirection = direction;
-  //         break;
-  //     }
+      currentTime = millis();
+    }
+  }
 
-  //     currentTime = millis();
-  //   }
-  // }
+  float distance = 0;
+  //Controls the distance depending on the instruction
+  {
+    if (status == Forward) {
+      if (useOtherUltrasonic == 0) {
+        if (counter == 0) {
+          distance = 40;
+        } else if (counter == 20) {
+          distance = 57;
+        } else {
+          distance = 50;
+        }
+      } else {
+        distance = 15 + (30 * (useOtherUltrasonic - 1));
+      }
+    } else if (status == Backward) {
+      if (useOtherUltrasonic == 0) {
+        distance = 52;
+      } else {
+        distance = 12 + (50 * (useOtherUltrasonic - 1));
+      }
+    }
+  }
 
-  // float distance = 0;
-  // //Controls the distance depending on the instruction
-  // {
-  //   if (status == Forward) {
-  //     if (useOtherUltrasonic == 0) {
-  //       if (counter == 0) {
-  //         distance = 40;
-  //       } else if (counter == 20) {
-  //         distance = 57;
-  //       } else {
-  //         distance = 50;
-  //       }
-  //     } else {
-  //       distance = 15 + (30 * (useOtherUltrasonic - 1));
-  //     }
-  //   } else if (status == Backward) {
-  //     if (useOtherUltrasonic == 0) {
-  //       distance = 52;
-  //     } else {
-  //       distance = 12 + (50 * (useOtherUltrasonic - 1));
-  //     }
-  //   }
-  // }
-
-  // //Instructs the robot when to stop
-  // {
-  //   if (useOtherUltrasonic != 0 && !delayBool) {
-  //     if (status == Forward && (ultraSonicDistance1 < distance) && (abs(timer - currentTime) > 1000)) {
-  //       status = stop_it;
-  //       finished = true;
-  //       delayBool = true;
-  //       currentTime = millis(); 
-  //       previousDistance1 = 0;
-  //       useOtherUltrasonic = 0;
-  //     } else if (status == Backward && (ultraSonicDistance2 < distance) && (abs(timer - currentTime) > 1000)) {
-  //       status = stop_it;
-  //       finished = true;
-  //       delayBool = true;
-  //       currentTime = millis(); 
-  //       previousDistance1 = 0;
-  //       useOtherUltrasonic = 0;
-  //     }
-  //   } else if (!delayBool) {
-  //     if ((abs(timer - currentTime) > getTimeForDistance(distance))) {
-  //       status = stop_it;
-  //       finished = true;
-  //       delayBool = true;
-  //       currentTime = millis();
-  //       previousDistance1 = 0;
-  //       useOtherUltrasonic = 0;
-  //     }
-  //   }
-  // }
+  //Instructs the robot when to stop
+  {
+    if (useOtherUltrasonic != 0 && !delayBool) {
+      if (status == Forward && (ultraSonicDistance1 < distance) && (abs(timer - currentTime) > 1000)) {
+        status = stop_it;
+        finished = true;
+        delayBool = true;
+        currentTime = millis(); 
+        previousDistance1 = 0;
+        useOtherUltrasonic = 0;
+      } else if (status == Backward && (ultraSonicDistance2 < distance) && (abs(timer - currentTime) > 1000)) {
+        status = stop_it;
+        finished = true;
+        delayBool = true;
+        currentTime = millis(); 
+        previousDistance1 = 0;
+        useOtherUltrasonic = 0;
+      }
+    } else if (!delayBool) {
+      if ((abs(timer - currentTime) > getTimeForDistance(distance))) {
+        status = stop_it;
+        finished = true;
+        delayBool = true;
+        currentTime = millis();
+        previousDistance1 = 0;
+        useOtherUltrasonic = 0;
+      }
+    }
+  }
 }
