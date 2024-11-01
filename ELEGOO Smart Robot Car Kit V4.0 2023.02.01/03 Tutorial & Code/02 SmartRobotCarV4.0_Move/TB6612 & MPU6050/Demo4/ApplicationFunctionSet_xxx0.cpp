@@ -70,7 +70,7 @@ static void ApplicationFunctionSet_ConquerorCarLinearMotionControl(ConquerorCarM
   
 
   //加入比例常数Kp
-  int R = (Yaw - yaw_So) * (Kp + 1) + speed;
+  int R = (Yaw - yaw_So) * (Kp) + speed;
   if (R > UpperLimit)
   {
     R = UpperLimit;
