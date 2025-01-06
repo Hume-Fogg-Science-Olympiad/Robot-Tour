@@ -73,6 +73,46 @@ int previousDistance2 = 0;
 int useUltrasonic = 0;
 bool useOtherUltrasonic = false;
 
+// Constant for steps in disk
+float stepcount = 20.00;  // 20 Slots in disk, change if different
+
+// Constant for wheel diameter
+float wheeldiameter = 65.50; // Wheel diameter in millimeters, change if different
+
+//Optical Interruptor Pins
+byte MOTOR_FL = 18;
+byte MOTOR_FR = 19;
+byte MOTOR_BL = 20;
+byte MOTOR_BR = 21;
+
+// Integers for pulse counters
+int counter_FL = 0;
+int counter_FR = 0;
+int counter_BL = 0;
+int counter_BR = 0;
+
+// Interrupt Service Routines
+
+void ISR_countFL()  
+{
+  counter_FL++;
+} 
+
+void ISR_countFR()  
+{
+  counter_FR++;
+}
+
+void ISR_countBL()  
+{
+  counter_BL++; 
+}
+
+void ISR_countBR()  
+{
+  counter_BR++; 
+}
+
 //Extrapolation for how much a time a certain distance will take
 //Doesnt work very well either (need to figure out encoders)
 float getTimeForDistance(float distance) {
@@ -235,6 +275,11 @@ void setup() {
     AppMPU6050getdata.MPU6050_dveGetEulerAngles(&Yaw);
     myUltrasonic.DeviceDriverSet_ULTRASONIC_1_Get(&ultraSonicDistance1);
     myUltrasonic.DeviceDriverSet_ULTRASONIC_2_Get(&ultraSonicDistance2);
+    // Attach the Interrupts to their ISR's
+    attachInterrupt(digitalPinToInterrupt (MOTOR_FL), ISR_countFL, RISING);
+    attachInterrupt(digitalPinToInterrupt (MOTOR_FR), ISR_countFR, RISING);
+    attachInterrupt(digitalPinToInterrupt (MOTOR_BL), ISR_countBL, RISING);
+    attachInterrupt(digitalPinToInterrupt (MOTOR_BR), ISR_countBR, RISING);
   }
 
   int lowest = -1;
@@ -559,7 +604,35 @@ void setup() {
     previousDistance2 = 0;
 
     useUltrasonic = false;
+
+    stepcount = 20.00;  // 20 Slots in disk, change if different
+
+    wheeldiameter = 65.50; // Wheel diameter in millimeters, change if different
+
+    MOTOR_FL = 18;
+    MOTOR_FR = 19;
+    MOTOR_BL = 20;
+    MOTOR_BR = 21;
+
+    counter_FL = 0;
+    counter_FR = 0;
+    counter_BL = 0;
+    counter_BR = 0;
   }
+}
+
+// Function to convert from centimeters to steps
+int CMtoSteps(float cm) {
+
+  int result;  // Final calculation result
+  float circumference = (wheeldiameter * 3.14) / 10; // Calculate wheel circumference in cm
+  float cm_step = circumference / stepcount;  // CM per Step
+  
+  float f_result = cm / cm_step;  // Calculate result as a float
+  result = (int) f_result; // Convert to an integer (note this is NOT rounded)
+  
+  return result;  // End and return result
+
 }
 
 void turn(Directions direction) {
@@ -777,29 +850,44 @@ void loop() {
   //Instructs the robot when to stop
   {
     if (useOtherUltrasonic != 0 && !delayBool) {
-      if (status == Forward && (ultraSonicDistance1 < distance) && (abs(timer - currentTime) > 1000)) {
+      if (status == Forward && counter_FL > CMtoSteps(distance) && counter_FR > CMtoSteps(distance) && counter_BL > CMtoSteps(distance) && counter_BR > CMtoSteps(distance)) {
         status = stop_it;
         finished = true;
         delayBool = true;
         currentTime = millis(); 
         previousDistance1 = 0;
         useOtherUltrasonic = 0;
-      } else if (status == Backward && (ultraSonicDistance2 < distance) && (abs(timer - currentTime) > 1000)) {
+
+        counter_FL = 0;
+        counter_FR = 0;
+        counter_BL = 0;
+        counter_BR = 0;
+      } else if (status == Backward && counter_FL > CMtoSteps(distance) && counter_FR > CMtoSteps(distance) && counter_BL > CMtoSteps(distance) && counter_BR > CMtoSteps(distance)) {
         status = stop_it;
         finished = true;
         delayBool = true;
         currentTime = millis(); 
         previousDistance1 = 0;
         useOtherUltrasonic = 0;
+
+        counter_FL = 0;
+        counter_FR = 0;
+        counter_BL = 0;
+        counter_BR = 0;
       }
     } else if (!delayBool) {
-      if ((abs(timer - currentTime) > getTimeForDistance(distance))) {
+      if (counter_FL > CMtoSteps(distance) && counter_FR > CMtoSteps(distance) && counter_BL > CMtoSteps(distance) && counter_BR > CMtoSteps(distance)) {
         status = stop_it;
         finished = true;
         delayBool = true;
         currentTime = millis();
         previousDistance1 = 0;
         useOtherUltrasonic = 0;
+
+        counter_FL = 0;
+        counter_FR = 0;
+        counter_BL = 0;
+        counter_BR = 0;
       }
     }
   }

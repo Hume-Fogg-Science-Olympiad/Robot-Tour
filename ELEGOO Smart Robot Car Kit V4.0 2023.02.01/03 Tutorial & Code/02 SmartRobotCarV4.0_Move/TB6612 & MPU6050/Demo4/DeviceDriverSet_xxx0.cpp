@@ -137,7 +137,6 @@ void DeviceDriverSet_Motor::DeviceDriverSet_Motor_control(boolean direction_A, u
       {
       case direction_just:
         digitalWrite(PIN_Motor_BIN_1, HIGH);
-
         analogWrite(PIN_Motor_PWMB, speed_B);
         break;
       case direction_back:
