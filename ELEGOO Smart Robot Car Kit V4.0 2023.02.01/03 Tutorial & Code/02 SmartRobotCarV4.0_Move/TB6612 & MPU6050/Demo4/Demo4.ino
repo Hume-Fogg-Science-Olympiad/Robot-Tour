@@ -226,6 +226,7 @@ void setup() {
   }
 
   //Setup of the device drivers used (Motors, Ultrasonic, etc...)
+  //I'm having some problems here where the code just stops if I add in encoder stuff
   {
     myUltrasonic.DeviceDriverSet_ULTRASONIC_Init();
     AppMotor.DeviceDriverSet_Motor_Init();
@@ -243,7 +244,10 @@ void setup() {
   //Creation of the node-to-node path using djikstra's
   {
     //Run dijkstra to generate the distance from the target node to all other node
-    //We are finding the distance from target to gate because we are working backwards, we want to end up at the gate closest to the end once we are done moving
+    /*
+      We are finding the distance from target to gate because we are working backwards, 
+      we want to end up at the gate closest to the end once we are done moving 
+    */
     dijkstra(graph, target);
 
     //Find the closest gate
@@ -476,6 +480,7 @@ void setup() {
       }
 
       //IDK really whats going on here but I think its decreasing the estimated amount of time a rotation takes from the timer
+      //Its also adding rotations to the carDirections array
       if (orientation != tempDirection && abs(rotations[orientation] - rotations[tempDirection]) != 180) {
         if (abs(abs(rotations[orientation]) - abs(rotations[tempDirection])) == 90) {
           targetTime -= 1.0274;
@@ -588,12 +593,14 @@ void turn(Directions direction) {
 
   bool turnDirection = Yaw < desiredYaw;
 
-  double m_kP = 0.35;
-  int lowerBound = 40;
-  int upperBound = 100;
+  //PID setup
+  double m_kP = 0.35; //Only use P because PID is hard to figure out
+  int lowerBound = 40; //The lowest that the motors will run
+  int upperBound = 100; //The highest that the motors will run
   while (abs(Yaw - desiredYaw) > 0.3) {
     int speed = lowerBound + abs((Yaw - desiredYaw) / m_kP);
 
+    //Clamp the speed
     if (speed < lowerBound) {
       speed = lowerBound;
     } else if (speed > upperBound) {
@@ -689,51 +696,32 @@ void loop() {
       Directions direction = carDirections[counter];
       switch (direction) {
         case Movement:
-
-          previousDistance1 = ultraSonicDistance1;
-          previousDistance2 = ultraSonicDistance2;
-
           status = Forward;
           break;
         case OneUltrasonicMovement:
-          previousDistance1 = ultraSonicDistance1;
-          previousDistance2 = ultraSonicDistance2;
           useOtherUltrasonic = 1;
           status = Forward;
           break;
         case TwoUltrasonicMovement:
-          previousDistance1 = ultraSonicDistance1;
-          previousDistance2 = ultraSonicDistance2;
           useOtherUltrasonic = 2;
           status = Forward;
           break;
         case ThreeUltrasonicMovement:
-          previousDistance1 = ultraSonicDistance1;
-          previousDistance2 = ultraSonicDistance2;
           useOtherUltrasonic = 3;
           status = Forward;
           break;
         case BackwardsMovement:
-          previousDistance1 = ultraSonicDistance1;
-          previousDistance2 = ultraSonicDistance2;
-
           status = Backward;
           break;
         case OneBackwardsUltrasonicMovement:
-          previousDistance1 = ultraSonicDistance1;
-          previousDistance2 = ultraSonicDistance2;
           useOtherUltrasonic = 1;
           status = Backward;
           break;
         case TwoBackwardsUltrasonicMovement:
-          previousDistance1 = ultraSonicDistance1;
-          previousDistance2 = ultraSonicDistance2;
           useOtherUltrasonic = 2;
           status = Backward;
           break;
         case ThreeBackwardsUltrasonicMovement:
-          previousDistance1 = ultraSonicDistance1;
-          previousDistance2 = ultraSonicDistance2;
           useOtherUltrasonic = 3;
           status = Backward;
           break;
@@ -746,6 +734,8 @@ void loop() {
           break;
       }
 
+      previousDistance1 = ultraSonicDistance1;
+      previousDistance2 = ultraSonicDistance2;
       currentTime = millis();
     }
   }
@@ -757,17 +747,15 @@ void loop() {
       if (useOtherUltrasonic == 0) {
         if (counter == 0) {
           distance = 40;
-        } else if (counter == 20) {
-          distance = 57;
         } else {
           distance = 50;
         }
       } else {
-        distance = 15 + (30 * (useOtherUltrasonic - 1));
+        distance = 15 + (30 * (useOtherUltrasonic - 1)); //This is barely used since long distance ultrasonic sucks
       }
     } else if (status == Backward) {
       if (useOtherUltrasonic == 0) {
-        distance = 52;
+        distance = 50;
       } else {
         distance = 12 + (50 * (useOtherUltrasonic - 1));
       }
