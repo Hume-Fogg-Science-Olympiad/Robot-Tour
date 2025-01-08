@@ -86,10 +86,10 @@ byte MOTOR_BL = 20;
 byte MOTOR_BR = 21;
 
 // Integers for pulse counters
-int counter_FL = 0;
-int counter_FR = 0;
-int counter_BL = 0;
-int counter_BR = 0;
+volatile int counter_FL = 0;
+volatile int counter_FR = 0;
+volatile int counter_BL = 0;
+volatile int counter_BR = 0;
 
 // Interrupt Service Routines
 
@@ -266,6 +266,7 @@ void setup() {
   }
 
   //Setup of the device drivers used (Motors, Ultrasonic, etc...)
+  //rn its not working, the program is crashing somewhere around here idk why
   {
     myUltrasonic.DeviceDriverSet_ULTRASONIC_Init();
     AppMotor.DeviceDriverSet_Motor_Init();
