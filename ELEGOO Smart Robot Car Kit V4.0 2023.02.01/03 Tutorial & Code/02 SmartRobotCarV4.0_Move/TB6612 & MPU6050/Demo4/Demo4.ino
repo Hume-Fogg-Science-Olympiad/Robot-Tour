@@ -834,7 +834,7 @@ void loop() {
       if (useOtherUltrasonic == 0) {
         if (counter == 0) {
           distance = 25;
-        } else if (carDirections[counter] == Default) {
+        } else if (carDirections[counter + 1] == Default) {
           distance = 50;
         } else {
           distance = 50;
