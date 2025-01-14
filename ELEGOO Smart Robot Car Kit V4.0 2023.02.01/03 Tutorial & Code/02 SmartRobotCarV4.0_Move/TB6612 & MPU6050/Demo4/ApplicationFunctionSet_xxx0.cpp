@@ -54,8 +54,6 @@ static void ApplicationFunctionSet_ConquerorCarLinearMotionControl(ConquerorCarM
   static uint8_t en = 110;
   static unsigned long is_time;
 
-  Serial.println(Yaw);
-
   if (en != directionRecord || millis() - is_time > 10)
   {
     AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_void, /*speed_A*/ 0,

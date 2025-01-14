@@ -8,13 +8,13 @@
 
 //Input values (Grid, target time, etc...)
 const char string_0[] PROGMEM =  ".-.-.-.-.";
-const char string_1[] PROGMEM =  "| | |X| |";
+const char string_1[] PROGMEM =  "| | |X|G|";
 const char string_2[] PROGMEM =  ".-.-.-.-.";
-const char string_3[] PROGMEM =  "| | |G| |";
+const char string_3[] PROGMEM =  "|G| | | |";
 const char string_4[] PROGMEM =  ".-.-.-.-.";
 const char string_5[] PROGMEM =  "| | |G| |";
 const char string_6[] PROGMEM =  ".-.-.-.-.";
-const char string_7[] PROGMEM =  "| | |G| |";
+const char string_7[] PROGMEM =  "|G| | | |";
 const char string_8[] PROGMEM =  ".-.-.-.-.";
 const char string_9[] PROGMEM =  "| | |G| |";
 const char string_10[] PROGMEM = ".-.-.S.-.";
@@ -396,6 +396,8 @@ void setup() {
 
       if (currentCounter != 0 && pathArray[currentCounter - 1] == tempPathArray[src][j]) continue;
 
+      Serial.println(tempPathArray[src][j]);
+
       pathArray[currentCounter] = tempPathArray[src][j];
       currentCounter++;
     }  
@@ -418,6 +420,8 @@ void setup() {
   {
     for (int i = currentCounter - 1; i >= 0; i--) {
       int currentNode = pathArray[i];
+
+      if (i - 1 < 0) break;
       int nextNode = pathArray[i - 1];
 
       Serial.println(currentNode);
@@ -657,6 +661,8 @@ void turn(Directions direction) {
 
   bool turnDirection = Yaw < desiredYaw;
 
+  Serial.println(desiredYaw);
+
   double m_kP = 0.35;
   int lowerBound = 40;
   int upperBound = 100;
@@ -670,6 +676,8 @@ void turn(Directions direction) {
     }
 
     turnDirection = Yaw < desiredYaw;
+
+    Serial.println(Yaw);
 
     if (turnDirection) { //Right
       AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_back, /*speed_A*/ speed,
@@ -825,9 +833,9 @@ void loop() {
     if (status == Forward) {
       if (useOtherUltrasonic == 0) {
         if (counter == 0) {
-          distance = 40;
-        } else if (counter == 20) {
-          distance = 57;
+          distance = 25;
+        } else if (carDirections[counter] == Default) {
+          distance = 50;
         } else {
           distance = 50;
         }
