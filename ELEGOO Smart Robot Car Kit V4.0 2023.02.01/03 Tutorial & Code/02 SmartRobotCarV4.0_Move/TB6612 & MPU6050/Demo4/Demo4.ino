@@ -8,15 +8,15 @@
 
 //Input values (Grid, target time, etc...)
 const char string_0[] PROGMEM =  ".-.-.-.-.";
-const char string_1[] PROGMEM =  "|G| | |G|";
+const char string_1[] PROGMEM =  "| | |X| |";
 const char string_2[] PROGMEM =  ".-.-.-.-.";
-const char string_3[] PROGMEM =  "| |G| | |";
+const char string_3[] PROGMEM =  "| | |G| |";
 const char string_4[] PROGMEM =  ".-.-.-.-.";
-const char string_5[] PROGMEM =  "| | | |X|";
+const char string_5[] PROGMEM =  "| | |G| |";
 const char string_6[] PROGMEM =  ".-.-.-.-.";
-const char string_7[] PROGMEM =  "| |G| | |";
+const char string_7[] PROGMEM =  "| | |G| |";
 const char string_8[] PROGMEM =  ".-.-.-.-.";
-const char string_9[] PROGMEM =  "| | | | |";
+const char string_9[] PROGMEM =  "| | |G| |";
 const char string_10[] PROGMEM = ".-.-.S.-.";
 
 const char *const grid[] PROGMEM = {string_0, string_1, string_2, string_3, string_4, string_5, string_6, string_7, string_8, string_9, string_10};
@@ -77,7 +77,7 @@ bool useOtherUltrasonic = false;
 float stepcount = 20.00;  // 20 Slots in disk, change if different
 
 // Constant for wheel diameter
-float wheeldiameter = 65.50; // Wheel diameter in millimeters, change if different
+float wheeldiameter = 66.50; // Wheel diameter in millimeters, change if different
 
 //Optical Interruptor Pins
 byte MOTOR_FL = 18;
@@ -267,14 +267,11 @@ void setup() {
 
   //Setup of the device drivers used (Motors, Ultrasonic, etc...)
   {
-    myUltrasonic.DeviceDriverSet_ULTRASONIC_Init();
     AppMotor.DeviceDriverSet_Motor_Init();
     AppMPU6050getdata.MPU6050_dveInit();
     delay(2000);
     AppMPU6050getdata.MPU6050_calibration();
     AppMPU6050getdata.MPU6050_dveGetEulerAngles(&Yaw);
-    myUltrasonic.DeviceDriverSet_ULTRASONIC_1_Get(&ultraSonicDistance1);
-    myUltrasonic.DeviceDriverSet_ULTRASONIC_2_Get(&ultraSonicDistance2);
     // Attach the Interrupts to their ISR's
     attachInterrupt(digitalPinToInterrupt (MOTOR_FL), ISR_countFL, RISING);
     attachInterrupt(digitalPinToInterrupt (MOTOR_FR), ISR_countFR, RISING);
@@ -607,7 +604,7 @@ void setup() {
 
     stepcount = 20.00;  // 20 Slots in disk, change if different
 
-    wheeldiameter = 65.50; // Wheel diameter in millimeters, change if different
+    wheeldiameter = 66.50; // Wheel diameter in millimeters, change if different
 
     MOTOR_FL = 18;
     MOTOR_FR = 19;
@@ -623,14 +620,13 @@ void setup() {
 
 // Function to convert from centimeters to steps
 int CMtoSteps(float cm) {
-
   int result;  // Final calculation result
   float circumference = (wheeldiameter * 3.14) / 10; // Calculate wheel circumference in cm
   float cm_step = circumference / stepcount;  // CM per Step
   
   float f_result = cm / cm_step;  // Calculate result as a float
   result = (int) f_result; // Convert to an integer (note this is NOT rounded)
-  
+
   return result;  // End and return result
 
 }
@@ -719,20 +715,20 @@ void loop() {
 
   //Handling of Ultrasonic values
   {
-    myUltrasonic.DeviceDriverSet_ULTRASONIC_1_Get(&ultraSonicDistance1);
-    myUltrasonic.DeviceDriverSet_ULTRASONIC_2_Get(&ultraSonicDistance2);
+    // myUltrasonic.DeviceDriverSet_ULTRASONIC_1_Get(&ultraSonicDistance1);
+    // myUltrasonic.DeviceDriverSet_ULTRASONIC_2_Get(&ultraSonicDistance2);
 
-    if (abs(ultraSonicDistance1 - previousDistance1) > 20 && previousDistance1 != 0) {
-      ultraSonicDistance1 = previousDistance1;
-    } else {
-      previousDistance1 = ultraSonicDistance1;
-    }
+    // if (abs(ultraSonicDistance1 - previousDistance1) > 20 && previousDistance1 != 0) {
+    //   ultraSonicDistance1 = previousDistance1;
+    // } else {
+    //   previousDistance1 = ultraSonicDistance1;
+    // }
 
-    if (abs(ultraSonicDistance2 - previousDistance2) > 20 && previousDistance2 != 0) {
-      ultraSonicDistance2 = previousDistance2;
-    } else {
-      previousDistance2 = ultraSonicDistance2;
-    }
+    // if (abs(ultraSonicDistance2 - previousDistance2) > 20 && previousDistance2 != 0) {
+    //   ultraSonicDistance2 = previousDistance2;
+    // } else {
+    //   previousDistance2 = ultraSonicDistance2;
+    // }
   }
 
   if (carDirections[counter] == Default) return;
@@ -850,7 +846,7 @@ void loop() {
   //Instructs the robot when to stop
   {
     if (useOtherUltrasonic != 0 && !delayBool) {
-      if (status == Forward && counter_FL > CMtoSteps(distance) && counter_FR > CMtoSteps(distance) && counter_BL > CMtoSteps(distance) && counter_BR > CMtoSteps(distance)) {
+      if (status == Forward && counter_FL > CMtoSteps(distance) && counter_FR > CMtoSteps(distance)) {
         status = stop_it;
         finished = true;
         delayBool = true;
@@ -862,7 +858,7 @@ void loop() {
         counter_FR = 0;
         counter_BL = 0;
         counter_BR = 0;
-      } else if (status == Backward && counter_FL > CMtoSteps(distance) && counter_FR > CMtoSteps(distance) && counter_BL > CMtoSteps(distance) && counter_BR > CMtoSteps(distance)) {
+      } else if (status == Backward && counter_FL > CMtoSteps(distance) && counter_FR > CMtoSteps(distance)) {
         status = stop_it;
         finished = true;
         delayBool = true;
@@ -876,7 +872,8 @@ void loop() {
         counter_BR = 0;
       }
     } else if (!delayBool) {
-      if (counter_FL > CMtoSteps(distance) && counter_FR > CMtoSteps(distance) && counter_BL > CMtoSteps(distance) && counter_BR > CMtoSteps(distance)) {
+      if (counter_FL > CMtoSteps(distance) && counter_FR > CMtoSteps(distance)) {
+
         status = stop_it;
         finished = true;
         delayBool = true;
