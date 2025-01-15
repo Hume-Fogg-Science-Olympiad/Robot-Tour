@@ -7,17 +7,25 @@
 //https://www.youtube.com/watch?v=LrsTBWf6Wsc Helpful youtube video about odometry (how to get position and orientation of a robot based on simple values)
 
 //Input values (Grid, target time, etc...)
-const char string_0[] PROGMEM =  ".-.-.-.-.";
-const char string_1[] PROGMEM =  "| | |X|G|";
-const char string_2[] PROGMEM =  ".-.-.-.-.";
-const char string_3[] PROGMEM =  "|G| | | |";
-const char string_4[] PROGMEM =  ".-.-.-.-.";
-const char string_5[] PROGMEM =  "| | |G| |";
-const char string_6[] PROGMEM =  ".-.-.-.-.";
-const char string_7[] PROGMEM =  "|G| | | |";
-const char string_8[] PROGMEM =  ".-.-.-.-.";
-const char string_9[] PROGMEM =  "| | |G| |";
-const char string_10[] PROGMEM = ".-.-.S.-.";
+//.-.
+//| | represents a single square of the grid, with up, left, right, and down boundaries
+//.-.
+//X is the target ending point
+//G is a gate bonus zone
+//S is where the robot will start
+//L is the last gate bonus zone
+//B are obstacles
+const char string_0[] PROGMEM =  ".-.-.-.-."; // .-.-.-.-.
+const char string_1[] PROGMEM =  "|G| | B |"; // | | | | |
+const char string_2[] PROGMEM =  ".-.B.-.B."; // .-.-.-.-.
+const char string_3[] PROGMEM =  "| | | |X|"; // | | | | |
+const char string_4[] PROGMEM =  ".B.-.-.-."; // .-.-.-.-.
+const char string_5[] PROGMEM =  "S B | BG|"; // | | | | |
+const char string_6[] PROGMEM =  ".-.-.-.-."; // .-.-.-.-.
+const char string_7[] PROGMEM =  "| | | | |"; // | | | | |
+const char string_8[] PROGMEM =  ".-.B.-.B."; // .-.-.-.-.
+const char string_9[] PROGMEM =  "| |LB |G|"; // | | | | |
+const char string_10[] PROGMEM = ".-.-.-.-."; // .-.-.-.-.
 
 const char *const grid[] PROGMEM = {string_0, string_1, string_2, string_3, string_4, string_5, string_6, string_7, string_8, string_9, string_10};
 
@@ -32,11 +40,12 @@ MPU6050_getdata AppMPU6050getdata;
 
 int timer = 0;
 ConquerorCarMotionControl status = stop_it;
-Directions* carDirections = (Directions*)malloc((V*4) * sizeof(byte));
-int src = 0;
-int target = 0;
+Directions* carDirections = (Directions*)malloc((V*8) * sizeof(byte));
+int src = -1;
+int target = -1;
+int lastGate = -1;
 
-byte* gates = (byte*)malloc((4) * sizeof(byte));
+byte* gates = (byte*)malloc((3) * sizeof(byte));
 Directions startingDirection = East;
 byte (*graph)[V] = malloc(sizeof(byte[V][V]));
 
@@ -137,7 +146,7 @@ void setup() {
       pathArray[i] = -1;
     }
 
-    for (int i = 0; i < 4; i++) { 
+    for (int i = 0; i < 3; i++) { 
       gates[i] = 255;
     }
   }
@@ -169,12 +178,13 @@ void setup() {
 
         //Formula to switch from x and y indices to a node number
         place = (4 * (0.5*((float) y)-0.5)) + (0.5*((float) x)-0.5);
-
+      
         //Initially set the distances to all adjacent nodes
         if (!onLeftSide) graph[place][place - 1] = 2;
         if (!onRightSide) graph[place][place + 1] = 2;
         if (!onTopSide) graph[place][place - 4] = 2;
         if (!onBottomSide) graph[place][place + 4] = 2;
+        
 
         //Check the adjacent lines for 'S' (Char code 83 is S) then mark that as src
         if ((int) upChar == 83) {
@@ -209,7 +219,7 @@ void setup() {
         if ((int) currentChar == 88) { //(Char code 88 is X) Sets the target variable if 'X' is in the current node
           target = place;
         } else if ((int) currentChar == 71) { //Sets the gate variables if the current char is 'G'
-          for (int j = 0; j < 4; j++) {
+          for (int j = 0; j < 3; j++) {
             if (gates[j] == 255) {
               if (gates[2] == 0) gates[2] = 255; //Dumb arduino stuff was giving a weird value to the third index idk why
 
@@ -217,6 +227,8 @@ void setup() {
               break;
             }
           }
+        } else if ((int) currentChar == 76) { //Sets the last gate variable if it is 'L'
+          lastGate = place;
         }
       }
     }
@@ -284,37 +296,23 @@ void setup() {
   int lowestIndex = 0;
   //Creation of the node-to-node path using djikstra's
   {
-    //Run dijkstra to generate the distance from the target node to all other node
-    //We are finding the distance from target to gate because we are working backwards, we want to end up at the gate closest to the end once we are done moving
+    //Run dijkstra to generate the distance from the target node to all other nodes
+    //We are finding the distance from target to gate because we are working backwards, we want to end up at the last gate first, then the next closest one and so on
     dijkstra(graph, target);
-
-    //Find the closest gate
-    for (int i = 0; i < 4; i++) {
-      int currentGate = gates[i];
-
-      if (lowest == -1) {
-        lowest = currentGate;
-        lowestIndex = i;
-      } else if (dist[lowest] > dist[currentGate]) {
-        lowest = currentGate;
-        lowestIndex = i;
-      }
-    }
-    gates[lowestIndex] = 255;
 
     //Add the path from target to closest gate to the array
     for (int j = 0; j < V; j++) {
-      if (tempPathArray[lowest][j] == 255) break;
+      if (tempPathArray[lastGate][j] == 255) break;
 
-      pathArray[currentCounter] = tempPathArray[lowest][j];
+      pathArray[currentCounter] = tempPathArray[lastGate][j];
       currentCounter++;
     }
 
     //Run dijkstra again to find next closest gate
-    dijkstra(graph, lowest);
+    dijkstra(graph, lastGate);
 
     lowest = -1;
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 3; i++) {
       int currentGate = gates[i];
 
       if (currentGate == 255) continue;
@@ -341,11 +339,17 @@ void setup() {
       currentCounter++;
     }  
 
+    //Disconnect the last gate from the rest of the graph so that we can make sure it is the last gate entered
+    graph[lastGate][lastGate - 1] = 0;
+    graph[lastGate][lastGate + 1] = 0;
+    graph[lastGate][lastGate - 4] = 0;
+    graph[lastGate][lastGate + 4] = 0;
+
     //Same idea again
     dijkstra(graph, lowest);
 
     lowest = -1;
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 3; i++) {
       int currentGate = gates[i];
 
       if (currentGate == 255) continue;
@@ -372,7 +376,7 @@ void setup() {
 
     dijkstra(graph, lowest);
 
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 3; i++) {
       int currentGate = gates[i];
       if (currentGate != 255) {
         lowest = currentGate;
@@ -395,8 +399,6 @@ void setup() {
       if (tempPathArray[src][j] == 255) break;
 
       if (currentCounter != 0 && pathArray[currentCounter - 1] == tempPathArray[src][j]) continue;
-
-      Serial.println(tempPathArray[src][j]);
 
       pathArray[currentCounter] = tempPathArray[src][j];
       currentCounter++;
@@ -892,7 +894,7 @@ void loop() {
         counter_FL = 0;
         counter_FR = 0;
         counter_BL = 0;
-        counter_BR = 0;--
+        counter_BR = 0;
       }
     }
   }
