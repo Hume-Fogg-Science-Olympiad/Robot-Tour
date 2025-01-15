@@ -663,8 +663,6 @@ void turn(Directions direction) {
 
   bool turnDirection = Yaw < desiredYaw;
 
-  Serial.println(desiredYaw);
-
   double m_kP = 0.35;
   int lowerBound = 40;
   int upperBound = 100;
@@ -678,8 +676,6 @@ void turn(Directions direction) {
     }
 
     turnDirection = Yaw < desiredYaw;
-
-    Serial.println(Yaw);
 
     if (turnDirection) { //Right
       AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_back, /*speed_A*/ speed,
@@ -724,6 +720,7 @@ void loop() {
   ApplicationFunctionSet_ConquerorCarMotionControl(status, 150);
 
   //Handling of Ultrasonic values
+  //Currently commented because it makes loop time super slow, which messes up encoder readings
   {
     // myUltrasonic.DeviceDriverSet_ULTRASONIC_1_Get(&ultraSonicDistance1);
     // myUltrasonic.DeviceDriverSet_ULTRASONIC_2_Get(&ultraSonicDistance2);
@@ -833,23 +830,16 @@ void loop() {
   //Controls the distance depending on the instruction
   {
     if (status == Forward) {
-      if (useOtherUltrasonic == 0) {
-        if (counter == 0) {
-          distance = 36.388;
-        } else if (carDirections[counter + 1] == Default) {
-          distance = 38.612;
-        } else {
-          distance = 50;
-        }
+      if (counter == 0) {
+        distance = 36.388;
+        // distance = 50;
+      } else if (carDirections[counter + 1] == Default) {
+        distance = 38.612;
       } else {
-        distance = 15 + (30 * (useOtherUltrasonic - 1));
+        distance = 50;
       }
     } else if (status == Backward) {
-      if (useOtherUltrasonic == 0) {
-        distance = 52;
-      } else {
-        distance = 12 + (50 * (useOtherUltrasonic - 1));
-      }
+      distance = 50;
     }
   }
 
@@ -882,6 +872,7 @@ void loop() {
         counter_BR = 0;
       }
     } else if (!delayBool) {
+      
       if (counter_FL > CMtoSteps(distance) && counter_FR > CMtoSteps(distance)) {
 
         status = stop_it;
