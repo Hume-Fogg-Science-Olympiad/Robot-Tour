@@ -91,14 +91,10 @@ float wheeldiameter = 66.50; // Wheel diameter in millimeters, change if differe
 //Optical Interruptor Pins
 byte MOTOR_FL = 18;
 byte MOTOR_FR = 19;
-byte MOTOR_BL = 20;
-byte MOTOR_BR = 21;
 
 // Integers for pulse counters
 int counter_FL = 0;
 int counter_FR = 0;
-int counter_BL = 0;
-int counter_BR = 0;
 
 // Interrupt Service Routines
 
@@ -110,16 +106,6 @@ void ISR_countFL()
 void ISR_countFR()  
 {
   counter_FR++;
-}
-
-void ISR_countBL()  
-{
-  counter_BL++; 
-}
-
-void ISR_countBR()  
-{
-  counter_BR++; 
 }
 
 //Extrapolation for how much a time a certain distance will take
@@ -287,8 +273,6 @@ void setup() {
     // Attach the Interrupts to their ISR's
     attachInterrupt(digitalPinToInterrupt (MOTOR_FL), ISR_countFL, RISING);
     attachInterrupt(digitalPinToInterrupt (MOTOR_FR), ISR_countFR, RISING);
-    attachInterrupt(digitalPinToInterrupt (MOTOR_BL), ISR_countBL, RISING);
-    attachInterrupt(digitalPinToInterrupt (MOTOR_BR), ISR_countBR, RISING);
   }
 
   int lowest = -1;
@@ -614,13 +598,9 @@ void setup() {
 
     MOTOR_FL = 18;
     MOTOR_FR = 19;
-    MOTOR_BL = 20;
-    MOTOR_BR = 21;
 
     counter_FL = 0;
     counter_FR = 0;
-    counter_BL = 0;
-    counter_BR = 0;
   }
 }
 
@@ -676,6 +656,8 @@ void turn(Directions direction) {
     }
 
     turnDirection = Yaw < desiredYaw;
+
+    Serial.println(Yaw);
 
     if (turnDirection) { //Right
       AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_back, /*speed_A*/ speed,
@@ -750,10 +732,16 @@ void loop() {
         previousDistance1 = 0;
         delayBool = false;
         counter++;
+
+        counter_FL = 0;
+        counter_FR = 0;
       } else if (abs(currentTime - timer) >= delayTime) {
         previousDistance1 = 0;
         counter++;
         delayBool = false;
+
+        counter_FL = 0;
+        counter_FR = 0;
       }
     }
   }
@@ -856,8 +844,6 @@ void loop() {
 
         counter_FL = 0;
         counter_FR = 0;
-        counter_BL = 0;
-        counter_BR = 0;
       } else if (status == Backward && counter_FL > CMtoSteps(distance) && counter_FR > CMtoSteps(distance)) {
         status = stop_it;
         finished = true;
@@ -868,8 +854,6 @@ void loop() {
 
         counter_FL = 0;
         counter_FR = 0;
-        counter_BL = 0;
-        counter_BR = 0;
       }
     } else if (!delayBool) {
       
@@ -884,8 +868,6 @@ void loop() {
 
         counter_FL = 0;
         counter_FR = 0;
-        counter_BL = 0;
-        counter_BR = 0;
       }
     }
   }
