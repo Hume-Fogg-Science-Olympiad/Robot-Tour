@@ -537,14 +537,14 @@ void setup() {
       //Determines the type of movement forward that we should use (Ultrasonic/Long Ultrasonic/Normal)
       if (abs(rotations[orientation] - rotations[tempDirection]) == 180) {
         if (ultrasonicMovement == 1) {
-          carDirections[lastCounter] = OneBackwardsUltrasonicMovement;
+          carDirections[lastCounter] = BackwardsMovement;
         } else if (ultrasonicMovement == 2) {
           carDirections[lastCounter] = TwoBackwardsUltrasonicMovement;
         } else if (ultrasonicMovement == 3) {
           carDirections[lastCounter] = ThreeBackwardsUltrasonicMovement;
         } else carDirections[lastCounter] = BackwardsMovement;
       } else if (ultrasonicMovement == 1) {
-        carDirections[lastCounter] = OneUltrasonicMovement;
+        carDirections[lastCounter] = Movement;
       } else if (ultrasonicMovement == 2) {
         carDirections[lastCounter] = TwoUltrasonicMovement;
       } else if (ultrasonicMovement == 3) {
@@ -833,9 +833,9 @@ void loop() {
     if (status == Forward) {
       if (useOtherUltrasonic == 0) {
         if (counter == 0) {
-          distance = 25;
+          distance = 36.388;
         } else if (carDirections[counter + 1] == Default) {
-          distance = 50;
+          distance = 38.612;
         } else {
           distance = 50;
         }
@@ -892,7 +892,7 @@ void loop() {
         counter_FL = 0;
         counter_FR = 0;
         counter_BL = 0;
-        counter_BR = 0;
+        counter_BR = 0;--
       }
     }
   }
