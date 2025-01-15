@@ -88,6 +88,11 @@ float stepcount = 20.00;  // 20 Slots in disk, change if different
 // Constant for wheel diameter
 float wheeldiameter = 66.50; // Wheel diameter in millimeters, change if different
 
+
+//Change the node-to-node array here
+byte pathArray[] = {0, 1, 2, 3}; 
+int pathLength = 4; //Change this to match the length of the path array
+
 //Optical Interruptor Pins
 byte MOTOR_FL = 18;
 byte MOTOR_FR = 19;
@@ -135,103 +140,10 @@ float getTimeForDistance(float distance) {
 void setup() {
   Serial.begin(9600);
 
-  //Intialization of default values
+  //Setup of directions
   {
-    for (int i = 0; i < V; i++) 
-      for (int j = 0; j < V; j++)
-        graph[i][j] = 0;
-
-    //Have to use -1 because 0 is a node index
-    for (int i = 0; i < 48; i++) {
-      pathArray[i] = -1;
-    }
-
-    for (int i = 0; i < 3; i++) { 
-      gates[i] = 255;
-    }
-  }
-
-  //Setup of the grid/gates/directions
-  {
-    //Step through the string representation of the grid
-    //Increment by 2 bcuz of the dividing lines |
-    for (int y = 1; y < 11; y += 2) {
-      for (int x = 1; x < 9; x += 2) {
-        //Literally have no clue how this works, just copied from somewhere
-        //What it does is converts the string from PROG_MEM into something actually readable
-        strcpy_P(buffer, (char *)pgm_read_ptr(&(grid[y]))); 
-        currentChar = buffer[x];
-
-        leftChar = buffer[x - 1];
-        rightChar = buffer[x + 1];
-
-        strcpy_P(buffer, (char *)pgm_read_ptr(&(grid[y + 1])));  
-        downChar = buffer[x];
-
-        strcpy_P(buffer, (char *)pgm_read_ptr(&(grid[y - 1])));  
-        upChar = buffer[x];
-
-        onLeftSide = x - 2 < 0;
-        onRightSide = x + 2 >= 9;
-        onTopSide = y - 2 < 0;
-        onBottomSide = y + 2 >= 11;
-
-        //Formula to switch from x and y indices to a node number
-        place = (4 * (0.5*((float) y)-0.5)) + (0.5*((float) x)-0.5);
-      
-        //Initially set the distances to all adjacent nodes
-        if (!onLeftSide) graph[place][place - 1] = 2;
-        if (!onRightSide) graph[place][place + 1] = 2;
-        if (!onTopSide) graph[place][place - 4] = 2;
-        if (!onBottomSide) graph[place][place + 4] = 2;
-        
-
-        //Check the adjacent lines for 'S' (Char code 83 is S) then mark that as src
-        if ((int) upChar == 83) {
-          src = place;
-          startingDirection = South;
-        } else if ((int) downChar == 83) {
-          src = place;
-          startingDirection = North;
-        } else if ((int) leftChar == 83) {
-          src = place;
-          startingDirection = East;
-        } else if ((int) rightChar == 83) {
-          src = place;
-          startingDirection = West;
-        }
-
-        //If there is a 'B' (Char code 66 is 'B') on the left/right/top/bottom remove the connection between the nodes
-        if ((int) upChar == 66 && !onTopSide) {
-          graph[place][place - 4] = 0;
-        }
-        if ((int) downChar == 66 && !onBottomSide) {
-          graph[place][place + 4] = 0;
-        }
-        if ((int) leftChar == 66 && !onLeftSide) {
-          graph[place][place - 1] = 0;
-        }
-        if ((int) rightChar == 66) {
-          graph[place][place + 1] = 0;
-        }
-
-        
-        if ((int) currentChar == 88) { //(Char code 88 is X) Sets the target variable if 'X' is in the current node
-          target = place;
-        } else if ((int) currentChar == 71) { //Sets the gate variables if the current char is 'G'
-          for (int j = 0; j < 3; j++) {
-            if (gates[j] == 255) {
-              if (gates[2] == 0) gates[2] = 255; //Dumb arduino stuff was giving a weird value to the third index idk why
-
-              gates[j] = place; 
-              break;
-            }
-          }
-        } else if ((int) currentChar == 76) { //Sets the last gate variable if it is 'L'
-          lastGate = place;
-        }
-      }
-    }
+    //Change this based on where the src is
+    startingDirection = North;
 
     //Based on which direction you start on the src, set the correct relative angles
     switch (startingDirection) {
@@ -291,128 +203,6 @@ void setup() {
     attachInterrupt(digitalPinToInterrupt (MOTOR_BR), ISR_countBR, RISING);
   }
 
-  int lowest = -1;
-  int currentCounter = 0;
-  int lowestIndex = 0;
-  //Creation of the node-to-node path using djikstra's
-  {
-    //Run dijkstra to generate the distance from the target node to all other nodes
-    //We are finding the distance from target to gate because we are working backwards, we want to end up at the last gate first, then the next closest one and so on
-    dijkstra(graph, target);
-
-    //Add the path from target to closest gate to the array
-    for (int j = 0; j < V; j++) {
-      if (tempPathArray[lastGate][j] == 255) break;
-
-      pathArray[currentCounter] = tempPathArray[lastGate][j];
-      currentCounter++;
-    }
-
-    //Run dijkstra again to find next closest gate
-    dijkstra(graph, lastGate);
-
-    lowest = -1;
-    for (int i = 0; i < 3; i++) {
-      int currentGate = gates[i];
-
-      if (currentGate == 255) continue;
-
-      if (lowest == -1) {
-        lowest = currentGate;
-        lowestIndex = i;
-      } else if (dist[lowest] > dist[currentGate]) {
-        lowest = currentGate;
-        lowestIndex = i;
-      }
-    }
-
-    gates[lowestIndex] = 255;
-
-    //Add the path from target to closest gate to the array
-    for (int j = 0; j < V; j++) {
-      if (tempPathArray[lowest][j] == 255) break;
-
-      //Avoid repeating the same instructions
-      if (currentCounter != 0 && pathArray[currentCounter - 1] == tempPathArray[lowest][j]) continue;
-
-      pathArray[currentCounter] = tempPathArray[lowest][j];
-      currentCounter++;
-    }  
-
-    //Disconnect the last gate from the rest of the graph so that we can make sure it is the last gate entered
-    graph[lastGate][lastGate - 1] = 0;
-    graph[lastGate][lastGate + 1] = 0;
-    graph[lastGate][lastGate - 4] = 0;
-    graph[lastGate][lastGate + 4] = 0;
-
-    //Same idea again
-    dijkstra(graph, lowest);
-
-    lowest = -1;
-    for (int i = 0; i < 3; i++) {
-      int currentGate = gates[i];
-
-      if (currentGate == 255) continue;
-
-      if (lowest == -1) {
-        lowest = currentGate;
-        lowestIndex = i;
-      } else if (dist[lowest] > dist[currentGate]) {
-        lowest = currentGate;
-        lowestIndex = i;
-      }
-    }
-
-    gates[lowestIndex] = 255;
-
-    for (int j = 0; j < V; j++) {
-      if (tempPathArray[lowest][j] == 255) break;
-
-      if (currentCounter != 0 && pathArray[currentCounter - 1] == tempPathArray[lowest][j]) continue;
-
-      pathArray[currentCounter] = tempPathArray[lowest][j];
-      currentCounter++;
-    }  
-
-    dijkstra(graph, lowest);
-
-    for (int i = 0; i < 3; i++) {
-      int currentGate = gates[i];
-      if (currentGate != 255) {
-        lowest = currentGate;
-        break;
-      } 
-    }
-
-    for (int j = 0; j < V; j++) {
-      if (tempPathArray[lowest][j] == 255) break;
-
-      if (currentCounter != 0 && pathArray[currentCounter - 1] == tempPathArray[lowest][j]) continue;
-
-      pathArray[currentCounter] = tempPathArray[lowest][j];
-      currentCounter++;
-    }  
-
-    dijkstra(graph, lowest);
-
-    for (int j = 0; j < V; j++) {
-      if (tempPathArray[src][j] == 255) break;
-
-      if (currentCounter != 0 && pathArray[currentCounter - 1] == tempPathArray[src][j]) continue;
-
-      pathArray[currentCounter] = tempPathArray[src][j];
-      currentCounter++;
-    }  
-
-    for (int i = 0; i < V*4; i++) {
-      if (i == 0) {
-        carDirections[i] = Movement;
-      } else carDirections[i] = Default;
-    }
-
-    free(gates);
-  }
-
   int ultrasonicMovement = 0;
   int lastCounter = 1;
   int tempDirection = startingDirection;
@@ -420,11 +210,11 @@ void setup() {
   int ultrasonicCounter = 1;
   //Creation of the actual directions array that the robot can act on
   {
-    for (int i = currentCounter - 1; i >= 0; i--) {
+    for (int i = 0; i < pathLength; i++) {
       int currentNode = pathArray[i];
 
-      if (i - 1 < 0) break;
-      int nextNode = pathArray[i - 1];
+      if (i + 1 >= pathLength) break;
+      int nextNode = pathArray[i + 1];
 
       Serial.println(currentNode);
 
@@ -437,88 +227,12 @@ void setup() {
       Directions orientation;
       if (difference == -4) {
         orientation = South;
-        int tempNode = nextNode;
-
-        if (!useLongUltrasonic) {
-          if (tempNode + 4 <= 19) {
-            if (graph[tempNode][tempNode + 4] == 0) {
-              ultrasonicMovement = ultrasonicCounter;
-            }
-          }
-        } else {
-          while (tempNode + 4 <= 19) {
-            if (graph[tempNode][tempNode + 4] == 0) {
-              ultrasonicMovement = ultrasonicCounter;
-              break;
-            }
-
-            ultrasonicCounter++;
-            tempNode += 4;
-          } 
-        }
       } else if (difference == 4) {
         orientation = North;
-        int tempNode = nextNode;
-        
-        if (!useLongUltrasonic) {
-          if (tempNode - 4 >= 0) {
-            if (graph[tempNode][tempNode - 4] == 0) {
-              ultrasonicMovement = ultrasonicCounter;
-            }
-          }
-        } else {
-          while (tempNode - 4 >= 0) {
-            if (graph[tempNode][tempNode - 4] == 0) {
-              ultrasonicMovement = ultrasonicCounter;
-              break;
-            }
-
-            ultrasonicCounter++;
-            tempNode -= 4;
-          } 
-        }
       } else if (difference == -1) {
         orientation = East;
-        int tempNode = nextNode;
-
-        if (!useLongUltrasonic) {
-          if ((tempNode - 3) % 4 != 0) {
-            if (graph[tempNode][tempNode + 1] == 0) {
-              ultrasonicMovement = ultrasonicCounter;
-            }
-          }
-        } else {
-          while ((tempNode - 3) % 4 != 0) {
-            if (graph[tempNode][tempNode + 1] == 0) {
-              ultrasonicMovement = ultrasonicCounter;
-              break;
-            }
-
-            ultrasonicCounter++;
-            tempNode += 1;
-          } 
-        }
       } else if (difference == 1) {
         orientation = West;
-        int tempNode = nextNode;
-
-        if (!useLongUltrasonic) {
-          if (tempNode % 4 != 0 && tempNode != 0) {
-            if (graph[tempNode][tempNode - 1] == 0) {
-              ultrasonicMovement = ultrasonicCounter;
-            }
-          }
-        } else {
-          while (tempNode % 4 != 0 && tempNode != 0) {
-            if (graph[tempNode][tempNode - 1] == 0) {
-              ultrasonicMovement = ultrasonicCounter;
-              break;
-            }
-
-            ultrasonicCounter++;
-            tempNode -= 1;
-          } 
-        }
       } else if (difference == 0) {
         continue;
       }
@@ -562,9 +276,6 @@ void setup() {
     }
 
     currentDirection = startingDirection;
-
-    free(graph);
-    free(pathArray);
   }
 
   Serial.println();
