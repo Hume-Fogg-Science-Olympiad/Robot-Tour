@@ -614,7 +614,6 @@ int CMtoSteps(float cm) {
   result = (int) f_result; // Convert to an integer (note this is NOT rounded)
 
   return result;  // End and return result
-
 }
 
 void turn(Directions direction) {
@@ -658,6 +657,7 @@ void turn(Directions direction) {
     turnDirection = Yaw < desiredYaw;
 
     Serial.println(Yaw);
+    Serial.println("idk why this isn't working");
 
     if (turnDirection) { //Right
       AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_back, /*speed_A*/ speed,
@@ -700,6 +700,8 @@ void freeTurn(float degrees) {
 
 void loop() {
   ApplicationFunctionSet_ConquerorCarMotionControl(status, 150);
+
+  Serial.println("this stuff sucks");
 
   //Handling of Ultrasonic values
   //Currently commented because it makes loop time super slow, which messes up encoder readings
