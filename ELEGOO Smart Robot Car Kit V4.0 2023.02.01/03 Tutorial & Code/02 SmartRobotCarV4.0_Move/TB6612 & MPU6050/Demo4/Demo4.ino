@@ -701,8 +701,6 @@ void freeTurn(float degrees) {
 void loop() {
   ApplicationFunctionSet_ConquerorCarMotionControl(status, 150);
 
-  Serial.println("this stuff sucks");
-
   //Handling of Ultrasonic values
   //Currently commented because it makes loop time super slow, which messes up encoder readings
   {
@@ -755,51 +753,32 @@ void loop() {
       Directions direction = carDirections[counter];
       switch (direction) {
         case Movement:
-
-          previousDistance1 = ultraSonicDistance1;
-          previousDistance2 = ultraSonicDistance2;
-
           status = Forward;
           break;
         case OneUltrasonicMovement:
-          previousDistance1 = ultraSonicDistance1;
-          previousDistance2 = ultraSonicDistance2;
           useOtherUltrasonic = 1;
           status = Forward;
           break;
         case TwoUltrasonicMovement:
-          previousDistance1 = ultraSonicDistance1;
-          previousDistance2 = ultraSonicDistance2;
           useOtherUltrasonic = 2;
           status = Forward;
           break;
         case ThreeUltrasonicMovement:
-          previousDistance1 = ultraSonicDistance1;
-          previousDistance2 = ultraSonicDistance2;
           useOtherUltrasonic = 3;
           status = Forward;
           break;
         case BackwardsMovement:
-          previousDistance1 = ultraSonicDistance1;
-          previousDistance2 = ultraSonicDistance2;
-
           status = Backward;
           break;
         case OneBackwardsUltrasonicMovement:
-          previousDistance1 = ultraSonicDistance1;
-          previousDistance2 = ultraSonicDistance2;
           useOtherUltrasonic = 1;
           status = Backward;
           break;
         case TwoBackwardsUltrasonicMovement:
-          previousDistance1 = ultraSonicDistance1;
-          previousDistance2 = ultraSonicDistance2;
           useOtherUltrasonic = 2;
           status = Backward;
           break;
         case ThreeBackwardsUltrasonicMovement:
-          previousDistance1 = ultraSonicDistance1;
-          previousDistance2 = ultraSonicDistance2;
           useOtherUltrasonic = 3;
           status = Backward;
           break;
@@ -812,6 +791,10 @@ void loop() {
           break;
       }
 
+      counter_FL = 0;
+      counter_FR = 0;
+      previousDistance1 = ultraSonicDistance1;
+      previousDistance2 = ultraSonicDistance2;
       currentTime = millis();
     }
   }
@@ -835,28 +818,16 @@ void loop() {
 
   //Instructs the robot when to stop
   {
-    if (useOtherUltrasonic != 0 && !delayBool) {
-      if (status == Forward && counter_FL > CMtoSteps(distance) && counter_FR > CMtoSteps(distance)) {
-        status = stop_it;
-        finished = true;
-        delayBool = true;
-        currentTime = millis(); 
-        previousDistance1 = 0;
-        useOtherUltrasonic = 0;
+    if (useOtherUltrasonic != 0 && !delayBool && counter_FL > CMtoSteps(distance) && counter_FR > CMtoSteps(distance)) {
+      status = stop_it;
+      finished = true;
+      delayBool = true;
+      currentTime = millis(); 
+      previousDistance1 = 0;
+      useOtherUltrasonic = 0;
 
-        counter_FL = 0;
-        counter_FR = 0;
-      } else if (status == Backward && counter_FL > CMtoSteps(distance) && counter_FR > CMtoSteps(distance)) {
-        status = stop_it;
-        finished = true;
-        delayBool = true;
-        currentTime = millis(); 
-        previousDistance1 = 0;
-        useOtherUltrasonic = 0;
-
-        counter_FL = 0;
-        counter_FR = 0;
-      }
+      counter_FL = 0;
+      counter_FR = 0;
     } else if (!delayBool) {
       
       if (counter_FL > CMtoSteps(distance) && counter_FR > CMtoSteps(distance)) {
