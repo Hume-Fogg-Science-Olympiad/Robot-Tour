@@ -38,9 +38,9 @@ DeviceDriverSet_Motor AppMotor;
 Application_xxx Application_ConquerorCarxxx0;
 MPU6050_getdata AppMPU6050getdata;
 
-int timer = 0;
+unsigned long timer = 0;
 ConquerorCarMotionControl status = stop_it;
-Directions* carDirections = (Directions*)malloc((V*8) * sizeof(byte));
+Directions* carDirections = (Directions*)malloc((V*6) * sizeof(byte));
 int src = -1;
 int target = -1;
 int lastGate = -1;
@@ -61,7 +61,7 @@ char upChar;
 int place;
 bool onLeftSide;
 bool onRightSide;
-int currentTime = 0;
+unsigned long currentTime = 0;
 int formerCounter = -1;
 int counter = 0;
 bool finished = false;
@@ -388,7 +388,7 @@ void setup() {
       currentCounter++;
     }  
 
-    for (int i = 0; i < V*4; i++) {
+    for (int i = 0; i < V*6; i++) {
       if (i == 0) {
         carDirections[i] = Movement;
       } else carDirections[i] = Default;
@@ -656,7 +656,6 @@ void turn(Directions direction) {
 
     turnDirection = Yaw < desiredYaw;
 
-    Serial.println(Yaw);
     Serial.println("idk why this isn't working");
 
     if (turnDirection) { //Right
