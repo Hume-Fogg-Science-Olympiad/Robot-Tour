@@ -602,6 +602,8 @@ void setup() {
     counter_FL = 0;
     counter_FR = 0;
   }
+
+  
 }
 
 // Function to convert from centimeters to steps
@@ -618,6 +620,8 @@ int CMtoSteps(float cm) {
 
 void turn(Directions direction) {
   AppMPU6050getdata.MPU6050_dveGetEulerAngles(&Yaw);
+
+  Serial.println("starting turn");
 
   int desiredYaw = 0;
   desiredYaw = rotations[(int) direction];
@@ -645,7 +649,9 @@ void turn(Directions direction) {
   double m_kP = 0.35;
   int lowerBound = 40;
   int upperBound = 100;
-  while (abs(Yaw - desiredYaw) > 0.3) {
+  
+  currentTime = millis();
+  while (abs(millis() - currentTime) <= 3000) {
     int speed = lowerBound + abs((Yaw - desiredYaw) / m_kP);
 
     if (speed < lowerBound) {
@@ -656,7 +662,7 @@ void turn(Directions direction) {
 
     turnDirection = Yaw < desiredYaw;
 
-    Serial.println("idk why this isn't working");
+    Serial.println("turning");
 
     if (turnDirection) { //Right
       AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_back, /*speed_A*/ speed,
@@ -670,6 +676,8 @@ void turn(Directions direction) {
 
   AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_void, /*speed_A*/ 0,
                                          /*direction_B*/ direction_void, /*speed_B*/ 0, /*controlED*/ control_enable); //Motor control
+
+  Serial.println("stopping turn");
 
   delayBool = true;
   currentTime = millis();
@@ -698,7 +706,7 @@ void freeTurn(float degrees) {
 }
 
 void loop() {
-  ApplicationFunctionSet_ConquerorCarMotionControl(status, 150);
+  ApplicationFunctionSet_ConquerorCarMotionControl(status, 255);
 
   //Handling of Ultrasonic values
   //Currently commented because it makes loop time super slow, which messes up encoder readings
@@ -726,8 +734,10 @@ void loop() {
   //Handling of calibrating stops
   {
     if (delayBool) {
+
       AppMPU6050getdata.MPU6050_dveGetEulerAngles(&Yaw);
       if (delayTime == 0) {
+
         previousDistance1 = 0;
         delayBool = false;
         counter++;
@@ -735,6 +745,7 @@ void loop() {
         counter_FL = 0;
         counter_FR = 0;
       } else if (abs(currentTime - timer) >= delayTime) {
+
         previousDistance1 = 0;
         counter++;
         delayBool = false;
@@ -748,6 +759,7 @@ void loop() {
   //Handling of each individual car direction
   {
     if (counter != formerCounter && !delayBool) {
+
       formerCounter = counter;
       Directions direction = carDirections[counter];
       switch (direction) {
@@ -802,6 +814,7 @@ void loop() {
   //Controls the distance depending on the instruction
   {
     if (status == Forward) {
+
       if (counter == 0) {
         distance = 36.388;
         // distance = 50;
@@ -818,6 +831,7 @@ void loop() {
   //Instructs the robot when to stop
   {
     if (useOtherUltrasonic != 0 && !delayBool && counter_FL > CMtoSteps(distance) && counter_FR > CMtoSteps(distance)) {
+
       status = stop_it;
       finished = true;
       delayBool = true;
@@ -828,7 +842,6 @@ void loop() {
       counter_FL = 0;
       counter_FR = 0;
     } else if (!delayBool) {
-      
       if (counter_FL > CMtoSteps(distance) && counter_FR > CMtoSteps(distance)) {
 
         status = stop_it;

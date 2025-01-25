@@ -58,14 +58,14 @@ static void ApplicationFunctionSet_ConquerorCarLinearMotionControl(ConquerorCarM
   {
     AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_void, /*speed_A*/ 0,
                                            /*direction_B*/ direction_void, /*speed_B*/ 0, /*controlED*/ control_enable); //Motor control
-    AppMPU6050getdata.MPU6050_dveGetEulerAngles(&Yaw);
+    AppMPU6050getdata.MPU6050_dveGetEulerAngles(&Yaw, false);
 
     is_time = millis();
   }
   if(en != directionRecord )
   {
     en = directionRecord;  
-    yaw_So = rotations[currentDirection];
+    yaw_So = Yaw;
   }
   
 
