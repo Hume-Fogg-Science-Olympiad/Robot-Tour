@@ -39,9 +39,7 @@ void DeviceDriverSet_ULTRASONIC::DeviceDriverSet_ULTRASONIC_2_Get(uint16_t *ULTR
 {
   unsigned int tempda_x = 0;
   digitalWrite(TRIG_PIN_2, LOW);
-  delayMicroseconds(2);
   digitalWrite(TRIG_PIN_2, HIGH);
-  delayMicroseconds(10);
   digitalWrite(TRIG_PIN_2, LOW);
   tempda_x = ((unsigned int)pulseIn(ECHO_PIN_2, HIGH) / 58);
   *ULTRASONIC_Get = tempda_x;
@@ -60,13 +58,6 @@ void DeviceDriverSet_ULTRASONIC::DeviceDriverSet_ULTRASONIC_Test(void)
   digitalWrite(TRIG_PIN_1, LOW);
   tempda_1 = ((unsigned int)pulseIn(ECHO_PIN_1, HIGH) / 58);
 
-  digitalWrite(TRIG_PIN_2, LOW);
-  delayMicroseconds(2);
-  digitalWrite(TRIG_PIN_2, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(TRIG_PIN_2, LOW);
-  tempda_2 = ((unsigned int)pulseIn(ECHO_PIN_2, HIGH) / 58);
-
 
 
   // if (tempda_x > 50)
@@ -79,11 +70,6 @@ void DeviceDriverSet_ULTRASONIC::DeviceDriverSet_ULTRASONIC_Test(void)
 
   Serial.print("ULTRASONIC_1=");
   Serial.print(tempda_1); // Convert ping time to distance and print result (0 = outside set distance range, no ping echo)
-  Serial.println("cm");
-
-  
-  Serial.print("ULTRASONIC_2=");
-  Serial.print(tempda_2); // Convert ping time to distance and print result (0 = outside set distance range, no ping echo)
   Serial.println("cm");
 }
 

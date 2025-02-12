@@ -266,6 +266,7 @@ void setup() {
   //Setup of the device drivers used (Motors, Ultrasonic, etc...)
   {
     AppMotor.DeviceDriverSet_Motor_Init();
+    myUltrasonic.DeviceDriverSet_ULTRASONIC_Init();
     AppMPU6050getdata.MPU6050_dveInit();
     delay(2000);
     AppMPU6050getdata.MPU6050_calibration();
@@ -274,7 +275,6 @@ void setup() {
     attachInterrupt(digitalPinToInterrupt (MOTOR_FL), ISR_countFL, RISING);
     attachInterrupt(digitalPinToInterrupt (MOTOR_FR), ISR_countFR, RISING);
   }
-
   int lowest = -1;
   int currentCounter = 0;
   int lowestIndex = 0;
@@ -387,19 +387,10 @@ void setup() {
       pathArray[currentCounter] = tempPathArray[src][j];
       currentCounter++;
     }  
-
-    for (int i = 0; i < V*6; i++) {
-      // if (i == 0) {
-      //   carDirections[i] = Movement;
-      // } else carDirections[i] = Default;
-      carDirections[i] = Default;
-    }
-
-    free(gates);
   }
 
   int ultrasonicMovement = 0;
-  int lastCounter = 0; //CHANGE THIS BACK WHEN REVERTING BACK TO NORMAL CODE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  int lastCounter = 0; //CHANGE THIS BACK TO 1 WHEN REVERTING BACK TO NORMAL CODE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   int tempDirection = startingDirection;
   int totalRotations = 0;
   int ultrasonicCounter = 1;
@@ -422,88 +413,12 @@ void setup() {
       Directions orientation;
       if (difference == -4) {
         orientation = South;
-        int tempNode = nextNode;
-
-        if (!useLongUltrasonic) {
-          if (tempNode + 4 <= 19) {
-            if (graph[tempNode][tempNode + 4] == 0) {
-              ultrasonicMovement = ultrasonicCounter;
-            }
-          }
-        } else {
-          while (tempNode + 4 <= 19) {
-            if (graph[tempNode][tempNode + 4] == 0) {
-              ultrasonicMovement = ultrasonicCounter;
-              break;
-            }
-
-            ultrasonicCounter++;
-            tempNode += 4;
-          } 
-        }
       } else if (difference == 4) {
         orientation = North;
-        int tempNode = nextNode;
-        
-        if (!useLongUltrasonic) {
-          if (tempNode - 4 >= 0) {
-            if (graph[tempNode][tempNode - 4] == 0) {
-              ultrasonicMovement = ultrasonicCounter;
-            }
-          }
-        } else {
-          while (tempNode - 4 >= 0) {
-            if (graph[tempNode][tempNode - 4] == 0) {
-              ultrasonicMovement = ultrasonicCounter;
-              break;
-            }
-
-            ultrasonicCounter++;
-            tempNode -= 4;
-          } 
-        }
       } else if (difference == -1) {
         orientation = East;
-        int tempNode = nextNode;
-
-        if (!useLongUltrasonic) {
-          if ((tempNode - 3) % 4 != 0) {
-            if (graph[tempNode][tempNode + 1] == 0) {
-              ultrasonicMovement = ultrasonicCounter;
-            }
-          }
-        } else {
-          while ((tempNode - 3) % 4 != 0) {
-            if (graph[tempNode][tempNode + 1] == 0) {
-              ultrasonicMovement = ultrasonicCounter;
-              break;
-            }
-
-            ultrasonicCounter++;
-            tempNode += 1;
-          } 
-        }
       } else if (difference == 1) {
         orientation = West;
-        int tempNode = nextNode;
-
-        if (!useLongUltrasonic) {
-          if (tempNode % 4 != 0 && tempNode != 0) {
-            if (graph[tempNode][tempNode - 1] == 0) {
-              ultrasonicMovement = ultrasonicCounter;
-            }
-          }
-        } else {
-          while (tempNode % 4 != 0 && tempNode != 0) {
-            if (graph[tempNode][tempNode - 1] == 0) {
-              ultrasonicMovement = ultrasonicCounter;
-              break;
-            }
-
-            ultrasonicCounter++;
-            tempNode -= 1;
-          } 
-        }
       } else if (difference == 0) {
         continue;
       }
@@ -517,8 +432,89 @@ void setup() {
         carDirections[lastCounter] = orientation;
 
         lastCounter++;
-        tempDirection = orientation;
         totalRotations++;
+        tempDirection = orientation;
+      }
+
+      int tempNode = nextNode;
+      switch (tempDirection) {
+        case South:
+          if (!useLongUltrasonic) {
+            if (tempNode + 4 <= 19) {
+              if (graph[tempNode][tempNode + 4] == 0) {
+                ultrasonicMovement = ultrasonicCounter;
+              }
+            }
+          } else {
+            while (tempNode + 4 <= 19) {
+              if (graph[tempNode][tempNode + 4] == 0) {
+                ultrasonicMovement = ultrasonicCounter;
+                break;
+              }
+
+              ultrasonicCounter++;
+              tempNode += 4;
+            } 
+          }
+          break;
+        case North:
+          if (!useLongUltrasonic) {
+            if (tempNode - 4 >= 0) {
+              if (tempNode == 5) Serial.println(graph[tempNode][tempNode - 4]);
+              if (graph[tempNode][tempNode - 4] == 0) {
+                ultrasonicMovement = ultrasonicCounter;
+              }
+            }
+          } else {
+            while (tempNode - 4 >= 0) {
+              if (graph[tempNode][tempNode - 4] == 0) {
+                ultrasonicMovement = ultrasonicCounter;
+                break;
+              }
+
+              ultrasonicCounter++;
+              tempNode -= 4;
+            } 
+          }
+          break;
+        case West:
+          if (!useLongUltrasonic) {
+            if (tempNode % 4 != 0 && tempNode != 0) {
+              if (graph[tempNode][tempNode - 1] == 0) {
+                ultrasonicMovement = ultrasonicCounter;
+              }
+            }
+          } else {
+            while (tempNode % 4 != 0 && tempNode != 0) {
+              if (graph[tempNode][tempNode - 1] == 0) {
+                ultrasonicMovement = ultrasonicCounter;
+                break;
+              }
+
+              ultrasonicCounter++;
+              tempNode -= 1;
+            } 
+          }
+          break;
+        case East:
+          if (!useLongUltrasonic) {
+            if ((tempNode - 3) % 4 != 0) {
+              if (graph[tempNode][tempNode + 1] == 0) {
+                ultrasonicMovement = ultrasonicCounter;
+              }
+            }
+          } else {
+            while ((tempNode - 3) % 4 != 0) {
+              if (graph[tempNode][tempNode + 1] == 0) {
+                ultrasonicMovement = ultrasonicCounter;
+                break;
+              }
+
+              ultrasonicCounter++;
+              tempNode += 1;
+            } 
+          }
+          break;
       }
 
       //Determines the type of movement forward that we should use (Ultrasonic/Long Ultrasonic/Normal)
@@ -531,7 +527,7 @@ void setup() {
           carDirections[lastCounter] = ThreeBackwardsUltrasonicMovement;
         } else carDirections[lastCounter] = BackwardsMovement;
       } else if (ultrasonicMovement == 1) {
-        carDirections[lastCounter] = Movement;
+        carDirections[lastCounter] = OneUltrasonicMovement;
       } else if (ultrasonicMovement == 2) {
         carDirections[lastCounter] = TwoUltrasonicMovement;
       } else if (ultrasonicMovement == 3) {
@@ -703,14 +699,14 @@ void loop() {
   //Handling of Ultrasonic values
   //Currently commented because it makes loop time super slow, which messes up encoder readings
   {
-    // myUltrasonic.DeviceDriverSet_ULTRASONIC_1_Get(&ultraSonicDistance1);
+    myUltrasonic.DeviceDriverSet_ULTRASONIC_1_Get(&ultraSonicDistance1);
     // myUltrasonic.DeviceDriverSet_ULTRASONIC_2_Get(&ultraSonicDistance2);
 
-    // if (abs(ultraSonicDistance1 - previousDistance1) > 20 && previousDistance1 != 0) {
-    //   ultraSonicDistance1 = previousDistance1;
-    // } else {
-    //   previousDistance1 = ultraSonicDistance1;
-    // }
+    if (abs(ultraSonicDistance1 - previousDistance1) > 20 && previousDistance1 != 0) {
+      ultraSonicDistance1 = previousDistance1;
+    } else {
+      previousDistance1 = ultraSonicDistance1;
+    }
 
     // if (abs(ultraSonicDistance2 - previousDistance2) > 20 && previousDistance2 != 0) {
     //   ultraSonicDistance2 = previousDistance2;
@@ -809,14 +805,17 @@ void loop() {
   //Controls the distance depending on the instruction
   {
     if (status == Forward) {
-
-      if (counter == 0) {
-        // distance = 36.388;
-        distance = 50;
-      } else if (carDirections[counter + 1] == Default) {
-        distance = 38.612;
+      if (useOtherUltrasonic == 0) {
+        if (counter == 0) {
+          // distance = 36.388;
+          distance = 50;
+        } else if (carDirections[counter + 1] == Default) {
+          distance = 38.612;
+        } else {
+          distance = 50;
+        }
       } else {
-        distance = 50;
+        distance = 40;
       }
     } else if (status == Backward) {
       distance = 50;
@@ -825,7 +824,7 @@ void loop() {
 
   //Instructs the robot when to stop
   {
-    if (useOtherUltrasonic != 0 && !delayBool && counter_FL > CMtoSteps(distance) && counter_FR > CMtoSteps(distance)) {
+    if (useOtherUltrasonic != 0 && !delayBool && ultraSonicDistance1 < distance) {
 
       status = stop_it;
       finished = true;
