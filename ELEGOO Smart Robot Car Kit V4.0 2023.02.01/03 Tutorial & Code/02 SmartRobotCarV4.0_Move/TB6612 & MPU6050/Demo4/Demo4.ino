@@ -389,16 +389,17 @@ void setup() {
     }  
 
     for (int i = 0; i < V*6; i++) {
-      if (i == 0) {
-        carDirections[i] = Movement;
-      } else carDirections[i] = Default;
+      // if (i == 0) {
+      //   carDirections[i] = Movement;
+      // } else carDirections[i] = Default;
+      carDirections[i] = Default;
     }
 
     free(gates);
   }
 
   int ultrasonicMovement = 0;
-  int lastCounter = 1;
+  int lastCounter = 0; //CHANGE THIS BACK WHEN REVERTING BACK TO NORMAL CODE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   int tempDirection = startingDirection;
   int totalRotations = 0;
   int ultrasonicCounter = 1;
@@ -602,8 +603,6 @@ void setup() {
     counter_FL = 0;
     counter_FR = 0;
   }
-
-  
 }
 
 // Function to convert from centimeters to steps
@@ -620,8 +619,6 @@ int CMtoSteps(float cm) {
 
 void turn(Directions direction) {
   AppMPU6050getdata.MPU6050_dveGetEulerAngles(&Yaw);
-
-  Serial.println("starting turn");
 
   int desiredYaw = 0;
   desiredYaw = rotations[(int) direction];
@@ -646,12 +643,10 @@ void turn(Directions direction) {
 
   bool turnDirection = Yaw < desiredYaw;
 
-  double m_kP = 0.35;
-  int lowerBound = 40;
-  int upperBound = 100;
-  
-  currentTime = millis();
-  while (abs(millis() - currentTime) <= 3000) {
+  double m_kP = 0.25;
+  int lowerBound = 30;
+  int upperBound = 80;
+  while (abs(Yaw - desiredYaw) > 0.3) {
     int speed = lowerBound + abs((Yaw - desiredYaw) / m_kP);
 
     if (speed < lowerBound) {
@@ -662,8 +657,6 @@ void turn(Directions direction) {
 
     turnDirection = Yaw < desiredYaw;
 
-    Serial.println("turning");
-
     if (turnDirection) { //Right
       AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_back, /*speed_A*/ speed,
                                              /*direction_B*/ direction_just, /*speed_B*/ speed, /*controlED*/ control_enable); //Motor control
@@ -672,12 +665,11 @@ void turn(Directions direction) {
                                              /*direction_B*/ direction_back, /*speed_B*/ speed, /*controlED*/ control_enable); //Motor control
     }
     AppMPU6050getdata.MPU6050_dveGetEulerAngles(&Yaw);
+    Serial.println(Yaw);
   }
 
   AppMotor.DeviceDriverSet_Motor_control(/*direction_A*/ direction_void, /*speed_A*/ 0,
                                          /*direction_B*/ direction_void, /*speed_B*/ 0, /*controlED*/ control_enable); //Motor control
-
-  Serial.println("stopping turn");
 
   delayBool = true;
   currentTime = millis();
@@ -706,7 +698,7 @@ void freeTurn(float degrees) {
 }
 
 void loop() {
-  ApplicationFunctionSet_ConquerorCarMotionControl(status, 255);
+  ApplicationFunctionSet_ConquerorCarMotionControl(status, 100);
 
   //Handling of Ultrasonic values
   //Currently commented because it makes loop time super slow, which messes up encoder readings
@@ -727,7 +719,10 @@ void loop() {
     // }
   }
 
-  if (carDirections[counter] == Default) return;
+  if (carDirections[counter] == Default) {
+    Serial.println("finished");
+    return;
+  }
 
   timer = millis();
 
@@ -816,8 +811,8 @@ void loop() {
     if (status == Forward) {
 
       if (counter == 0) {
-        distance = 36.388;
-        // distance = 50;
+        // distance = 36.388;
+        distance = 50;
       } else if (carDirections[counter + 1] == Default) {
         distance = 38.612;
       } else {
