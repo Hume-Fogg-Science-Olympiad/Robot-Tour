@@ -57,7 +57,6 @@ static void ApplicationFunctionSet_ConquerorCarLinearMotionControl(ConquerorCarM
   if (en != directionRecord || millis() - is_time > 10)
   {
     AppMPU6050getdata.MPU6050_dveGetEulerAngles(&Yaw, false);
-    Serial.println(Yaw);
 
     is_time = millis();
   }
