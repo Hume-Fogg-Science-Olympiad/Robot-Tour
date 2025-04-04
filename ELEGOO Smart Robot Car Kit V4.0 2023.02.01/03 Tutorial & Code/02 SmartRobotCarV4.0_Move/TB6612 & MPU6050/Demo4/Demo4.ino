@@ -389,10 +389,10 @@ void setup() {
     }  
   }
 
-  carDirections[0] = Movement;
+  // carDirections[0] = Movement;
+  int lastCounter = 0; //CHANGE THIS BACK TO 1 WHEN REVERTING BACK TO NORMAL CODE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
   int ultrasonicMovement = 0;
-  int lastCounter = 1; //CHANGE THIS BACK TO 1 WHEN REVERTING BACK TO NORMAL CODE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   int tempDirection = startingDirection;
   int totalRotations = 0;
   int ultrasonicCounter = 1;
@@ -708,6 +708,8 @@ void freeTurn(float degrees) {
 void loop() {
   ApplicationFunctionSet_ConquerorCarMotionControl(status, 150);
 
+  //Recalculate distance shit with fully charged batteries because I fucking forgot to push
+
   //Handling of Ultrasonic values
   //Currently commented because it makes loop time super slow, which messes up encoder readings <- turns out this was b/c the encoders were unplugged, which makes it slow for some reason
   {
@@ -819,13 +821,11 @@ void loop() {
     if (status == Forward) {
       if (useOtherUltrasonic == 0) {
         if (counter == 0) {
-          distance = 36.388;
-          // distance = 50;
+          // distance = 36.388;
+          distance = 50;
         } else if (carDirections[counter + 1] == Default) {
           distance = 38.612;
-        } else if (counter == 13) {
-          distance = 60;
-        }else {
+        } else {
           distance = 50;
         }
       } else {
