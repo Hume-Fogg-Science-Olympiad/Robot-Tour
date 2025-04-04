@@ -9,7 +9,6 @@ using namespace std;
 const byte V = 20;
 
 static byte tempPathArray[V][V];
-static byte* pathArray = (byte*)malloc((48) * sizeof(byte));
 
 static int dist[V]; // The output array. dist[i] will hold the
 			// shortest

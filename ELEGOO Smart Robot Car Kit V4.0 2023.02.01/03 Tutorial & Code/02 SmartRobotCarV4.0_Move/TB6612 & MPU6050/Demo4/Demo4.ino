@@ -29,6 +29,9 @@ const char string_10[] PROGMEM = ".-.-.-.-."; // .-.-.-.-.
 
 const char *const grid[] PROGMEM = {string_0, string_1, string_2, string_3, string_4, string_5, string_6, string_7, string_8, string_9, string_10};
 
+const byte pathArray[] = {8, 12, 16, 17, 16, 12, 13, 9, 5, 4, 0, 4, 5, 9, 10, 14, 18, 19, 18, 14, 15, 11, 7};
+const int pathLength = 23;
+
 float targetTime = 50;
 //Experimental feature where the ultrasonic is used for distances over ~100 cm (doesn't work well)
 bool useLongUltrasonic = false;
@@ -126,11 +129,6 @@ void setup() {
     for (int i = 0; i < V; i++) 
       for (int j = 0; j < V; j++)
         graph[i][j] = 0;
-
-    //Have to use -1 because 0 is a node index
-    for (int i = 0; i < 48; i++) {
-      pathArray[i] = -1;
-    }
 
     for (int i = 0; i < 3; i++) { 
       gates[i] = 255;
@@ -275,119 +273,6 @@ void setup() {
     attachInterrupt(digitalPinToInterrupt (MOTOR_FL), ISR_countFL, RISING);
     attachInterrupt(digitalPinToInterrupt (MOTOR_FR), ISR_countFR, RISING);
   }
-  int lowest = -1;
-  int currentCounter = 0;
-  int lowestIndex = 0;
-  //Creation of the node-to-node path using djikstra's
-  {
-    //Run dijkstra to generate the distance from the target node to all other nodes
-    //We are finding the distance from target to gate because we are working backwards, we want to end up at the last gate first, then the next closest one and so on
-    dijkstra(graph, target);
-
-    //Add the path from target to closest gate to the array
-    for (int j = 0; j < V; j++) {
-      if (tempPathArray[lastGate][j] == 255) break;
-
-      pathArray[currentCounter] = tempPathArray[lastGate][j];
-      currentCounter++;
-    }
-
-    //Run dijkstra again to find next closest gate
-    dijkstra(graph, lastGate);
-
-    lowest = -1;
-    for (int i = 0; i < 3; i++) {
-      int currentGate = gates[i];
-
-      if (currentGate == 255) continue;
-
-      if (lowest == -1) {
-        lowest = currentGate;
-        lowestIndex = i;
-      } else if (dist[lowest] > dist[currentGate]) {
-        lowest = currentGate;
-        lowestIndex = i;
-      }
-    }
-
-    gates[lowestIndex] = 255;
-
-    //Add the path from target to closest gate to the array
-    for (int j = 0; j < V; j++) {
-      if (tempPathArray[lowest][j] == 255) break;
-
-      //Avoid repeating the same instructions
-      if (currentCounter != 0 && pathArray[currentCounter - 1] == tempPathArray[lowest][j]) continue;
-
-      pathArray[currentCounter] = tempPathArray[lowest][j];
-      currentCounter++;
-    }  
-
-    //Disconnect the last gate from the rest of the graph so that we can make sure it is the last gate entered
-    graph[lastGate][lastGate - 1] = 0;
-    graph[lastGate][lastGate + 1] = 0;
-    graph[lastGate][lastGate - 4] = 0;
-    graph[lastGate][lastGate + 4] = 0;
-
-    //Same idea again
-    dijkstra(graph, lowest);
-
-    lowest = -1;
-    for (int i = 0; i < 3; i++) {
-      int currentGate = gates[i];
-
-      if (currentGate == 255) continue;
-
-      if (lowest == -1) {
-        lowest = currentGate;
-        lowestIndex = i;
-      } else if (dist[lowest] > dist[currentGate]) {
-        lowest = currentGate;
-        lowestIndex = i;
-      }
-    }
-
-    gates[lowestIndex] = 255;
-
-    for (int j = 0; j < V; j++) {
-      if (tempPathArray[lowest][j] == 255) break;
-
-      if (currentCounter != 0 && pathArray[currentCounter - 1] == tempPathArray[lowest][j]) continue;
-
-      pathArray[currentCounter] = tempPathArray[lowest][j];
-      currentCounter++;
-    }  
-
-    dijkstra(graph, lowest);
-
-    for (int i = 0; i < 3; i++) {
-      int currentGate = gates[i];
-      if (currentGate != 255) {
-        lowest = currentGate;
-        break;
-      } 
-    }
-
-    for (int j = 0; j < V; j++) {
-      if (tempPathArray[lowest][j] == 255) break;
-
-      if (currentCounter != 0 && pathArray[currentCounter - 1] == tempPathArray[lowest][j]) continue;
-
-      pathArray[currentCounter] = tempPathArray[lowest][j];
-      currentCounter++;
-    }  
-
-    dijkstra(graph, lowest);
-
-    for (int j = 0; j < V; j++) {
-      if (tempPathArray[src][j] == 255) break;
-
-      if (currentCounter != 0 && pathArray[currentCounter - 1] == tempPathArray[src][j]) continue;
-
-      pathArray[currentCounter] = tempPathArray[src][j];
-      currentCounter++;
-    }  
-  }
 
   // carDirections[0] = Movement;
   int lastCounter = 0; //CHANGE THIS BACK TO 1 WHEN REVERTING BACK TO NORMAL CODE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -398,13 +283,9 @@ void setup() {
   int ultrasonicCounter = 1;
   //Creation of the actual directions array that the robot can act on
   {
-    for (int i = currentCounter - 1; i >= 0; i--) {
+    for (int i = 0; i < pathLength - 1; i++) {
       int currentNode = pathArray[i];
-
-      if (i - 1 < 0) break;
-      int nextNode = pathArray[i - 1];
-
-      Serial.println(currentNode);
+      int nextNode = pathArray[i + 1];
 
       //If for some reason pathArray has invalid nodes
       if (nextNode > 19 || nextNode < 0) break;
@@ -443,7 +324,6 @@ void setup() {
         case South:
           if (!useLongUltrasonic) {
             if (tempNode + 4 <= 19) {
-              if (tempNode == 4) Serial.println("something");
               if (graph[tempNode][tempNode + 4] == 0) {
                 ultrasonicMovement = ultrasonicCounter;
               }
@@ -549,7 +429,6 @@ void setup() {
     carDirections[lastCounter] = Default;
 
     free(graph);
-    free(pathArray);
   }
 
   Serial.println();
