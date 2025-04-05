@@ -32,7 +32,7 @@ const char *const grid[] PROGMEM = {string_0, string_1, string_2, string_3, stri
 const byte pathArray[] = {8, 12, 16, 17, 16, 12, 13, 9, 5, 4, 0, 4, 5, 9, 10, 14, 18, 19, 18, 14, 15, 11, 7};
 const int pathLength = 23;
 
-float targetTime = 50;
+float targetTime = 80;
 //Experimental feature where the ultrasonic is used for distances over ~100 cm (doesn't work well)
 bool useLongUltrasonic = false;
 
@@ -117,7 +117,7 @@ void ISR_countFR()
 //Doesnt work very well either (need to figure out encoders)
 float getTimeForDistance(float distance) {
 
-  return distance*29.1674 + 39.62361;
+  return distance*21.80194 + 54.03797;
 }
 
 boolean firstTime = false;
@@ -274,8 +274,8 @@ void setup() {
     attachInterrupt(digitalPinToInterrupt (MOTOR_FR), ISR_countFR, RISING);
   }
 
-  // carDirections[0] = Movement;
-  int lastCounter = 0; //CHANGE THIS BACK TO 1 WHEN REVERTING BACK TO NORMAL CODE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  carDirections[0] = Movement;
+  int lastCounter = 1; //CHANGE THIS BACK TO 1 WHEN REVERTING BACK TO NORMAL CODE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
   int ultrasonicMovement = 0;
   int tempDirection = startingDirection;
@@ -450,7 +450,7 @@ void setup() {
 
     speed = 150;
 
-    delayTime = (targetTime - (((29.1674*50+39.62361)*totalMovement)/1000))/(totalMovement - 1 + totalRotations) * 1000;
+    delayTime = (targetTime - (((getTimeForDistance(50))*totalMovement)/1000))/(totalMovement - 1 + totalRotations) * 1000;
     if (delayTime < 0) {
       delayTime = 0;
     } else if (delayTime > 3000) { //If the delay time is over 3 seconds (will result in a penalty), bump it down to 2.5
