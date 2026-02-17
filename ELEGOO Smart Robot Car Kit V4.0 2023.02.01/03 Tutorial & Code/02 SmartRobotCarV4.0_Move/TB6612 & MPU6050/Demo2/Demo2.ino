@@ -9,15 +9,17 @@ void setup() {
   AppMotor.DeviceDriverSet_Motor_Init();
   delay(2000);
 
+  Application_ConquerorCarxxx0.Motion_Control = 1;
+
 }
 
 void loop() {
+  ApplicationFunctionSet_ConquerorCarMotionControl(Application_ConquerorCarxxx0.Motion_Control /*direction*/, 150 /*speed*/);
+  delay(1000);
 
-  for (Application_ConquerorCarxxx0.Motion_Control = 0; Application_ConquerorCarxxx0.Motion_Control < 2; Application_ConquerorCarxxx0.Motion_Control = Application_ConquerorCarxxx0.Motion_Control + 1)
-  {
-    ApplicationFunctionSet_ConquerorCarMotionControl(Application_ConquerorCarxxx0.Motion_Control /*direction*/, 255 /*speed*/);
-    delay(1000);
+  if (Application_ConquerorCarxxx0.Motion_Control == 1) {
+    Application_ConquerorCarxxx0.Motion_Control = 2;
+  } else {
+    Application_ConquerorCarxxx0.Motion_Control = 1;
   }
-
-
 }

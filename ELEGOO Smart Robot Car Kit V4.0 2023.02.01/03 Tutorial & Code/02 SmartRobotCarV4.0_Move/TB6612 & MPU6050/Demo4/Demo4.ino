@@ -29,7 +29,10 @@ const char string_10[] PROGMEM = ".-.-.-.-."; // .-.-.-.-.
 
 const char *const grid[] PROGMEM = {string_0, string_1, string_2, string_3, string_4, string_5, string_6, string_7, string_8, string_9, string_10};
 
-float targetTime = 50;
+const byte pathArray[] = {8, 12, 16, 17, 16, 12, 13, 9, 5, 4, 0, 4, 5, 9, 10, 14, 18, 19, 18, 14, 15, 11, 7};
+const int pathLength = 23;
+
+float targetTime = 80;
 //Experimental feature where the ultrasonic is used for distances over ~100 cm (doesn't work well)
 bool useLongUltrasonic = false;
 
@@ -38,9 +41,9 @@ DeviceDriverSet_Motor AppMotor;
 Application_xxx Application_ConquerorCarxxx0;
 MPU6050_getdata AppMPU6050getdata;
 
-int timer = 0;
+unsigned long timer = 0;
 ConquerorCarMotionControl status = stop_it;
-Directions* carDirections = (Directions*)malloc((V*8) * sizeof(byte));
+Directions* carDirections = (Directions*)malloc((V*6) * sizeof(byte));
 int src = -1;
 int target = -1;
 int lastGate = -1;
@@ -61,7 +64,7 @@ char upChar;
 int place;
 bool onLeftSide;
 bool onRightSide;
-int currentTime = 0;
+unsigned long currentTime = 0;
 int formerCounter = -1;
 int counter = 0;
 bool finished = false;
@@ -80,7 +83,9 @@ int previousDistance1 = 0;
 int previousDistance2 = 0;
 
 int useUltrasonic = 0;
-bool useOtherUltrasonic = false;
+int useOtherUltrasonic = 0;
+
+unsigned long debounceTime = 0;
 
 // Constant for steps in disk
 float stepcount = 20.00;  // 20 Slots in disk, change if different
@@ -96,14 +101,10 @@ int pathLength = 4; //Change this to match the length of the path array
 //Optical Interruptor Pins
 byte MOTOR_FL = 18;
 byte MOTOR_FR = 19;
-byte MOTOR_BL = 20;
-byte MOTOR_BR = 21;
 
 // Integers for pulse counters
 int counter_FL = 0;
 int counter_FR = 0;
-int counter_BL = 0;
-int counter_BR = 0;
 
 // Interrupt Service Routines
 
@@ -117,26 +118,14 @@ void ISR_countFR()
   counter_FR++;
 }
 
-void ISR_countBL()  
-{
-  counter_BL++; 
-}
-
-void ISR_countBR()  
-{
-  counter_BR++; 
-}
-
 //Extrapolation for how much a time a certain distance will take
 //Doesnt work very well either (need to figure out encoders)
 float getTimeForDistance(float distance) {
-  float slope;
-  if (speed == 150) {
-    slope = 0.0394048;
-  }
-  return distance/slope;
+
+  return distance*21.80194 + 54.03797;
 }
 
+boolean firstTime = false;
 void setup() {
   Serial.begin(9600);
 
@@ -192,6 +181,7 @@ void setup() {
   //Setup of the device drivers used (Motors, Ultrasonic, etc...)
   {
     AppMotor.DeviceDriverSet_Motor_Init();
+    myUltrasonic.DeviceDriverSet_ULTRASONIC_Init();
     AppMPU6050getdata.MPU6050_dveInit();
     delay(2000);
     AppMPU6050getdata.MPU6050_calibration();
@@ -199,24 +189,20 @@ void setup() {
     // Attach the Interrupts to their ISR's
     attachInterrupt(digitalPinToInterrupt (MOTOR_FL), ISR_countFL, RISING);
     attachInterrupt(digitalPinToInterrupt (MOTOR_FR), ISR_countFR, RISING);
-    attachInterrupt(digitalPinToInterrupt (MOTOR_BL), ISR_countBL, RISING);
-    attachInterrupt(digitalPinToInterrupt (MOTOR_BR), ISR_countBR, RISING);
   }
 
+  carDirections[0] = Movement;
+  int lastCounter = 1; //CHANGE THIS BACK TO 1 WHEN REVERTING BACK TO NORMAL CODE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
   int ultrasonicMovement = 0;
-  int lastCounter = 1;
   int tempDirection = startingDirection;
   int totalRotations = 0;
   int ultrasonicCounter = 1;
   //Creation of the actual directions array that the robot can act on
   {
-    for (int i = 0; i < pathLength; i++) {
+    for (int i = 0; i < pathLength - 1; i++) {
       int currentNode = pathArray[i];
-
-      if (i + 1 >= pathLength) break;
       int nextNode = pathArray[i + 1];
-
-      Serial.println(currentNode);
 
       //If for some reason pathArray has invalid nodes
       if (nextNode > 19 || nextNode < 0) break;
@@ -246,21 +232,101 @@ void setup() {
         carDirections[lastCounter] = orientation;
 
         lastCounter++;
-        tempDirection = orientation;
         totalRotations++;
+        tempDirection = orientation;
+      }
+
+      int tempNode = nextNode;
+      switch (orientation) {
+        case South:
+          if (!useLongUltrasonic) {
+            if (tempNode + 4 <= 19) {
+              if (graph[tempNode][tempNode + 4] == 0) {
+                ultrasonicMovement = ultrasonicCounter;
+              }
+            }
+          } else {
+            while (tempNode + 4 <= 19) {
+              if (graph[tempNode][tempNode + 4] == 0) {
+                ultrasonicMovement = ultrasonicCounter;
+                break;
+              }
+
+              ultrasonicCounter++;
+              tempNode += 4;
+            } 
+          }
+          break;
+        case North:
+          if (!useLongUltrasonic) {
+            if (tempNode - 4 >= 0) {
+              if (graph[tempNode][tempNode - 4] == 0) {
+                ultrasonicMovement = ultrasonicCounter;
+              }
+            }
+          } else {
+            while (tempNode - 4 >= 0) {
+              if (graph[tempNode][tempNode - 4] == 0) {
+                ultrasonicMovement = ultrasonicCounter;
+                break;
+              }
+
+              ultrasonicCounter++;
+              tempNode -= 4;
+            } 
+          }
+          break;
+        case West:
+          if (!useLongUltrasonic) {
+            if (tempNode % 4 != 0 && tempNode != 0) {
+              if (graph[tempNode][tempNode - 1] == 0) {
+                ultrasonicMovement = ultrasonicCounter;
+              }
+            }
+          } else {
+            while (tempNode % 4 != 0 && tempNode != 0) {
+              if (graph[tempNode][tempNode - 1] == 0) {
+                ultrasonicMovement = ultrasonicCounter;
+                break;
+              }
+
+              ultrasonicCounter++;
+              tempNode -= 1;
+            } 
+          }
+          break;
+        case East:
+          if (!useLongUltrasonic) {
+            if ((tempNode - 3) % 4 != 0) {
+              if (graph[tempNode][tempNode + 1] == 0) {
+                ultrasonicMovement = ultrasonicCounter;
+              }
+            }
+          } else {
+            while ((tempNode - 3) % 4 != 0) {
+              if (graph[tempNode][tempNode + 1] == 0) {
+                ultrasonicMovement = ultrasonicCounter;
+                break;
+              }
+
+              ultrasonicCounter++;
+              tempNode += 1;
+            } 
+          }
+          break;
       }
 
       //Determines the type of movement forward that we should use (Ultrasonic/Long Ultrasonic/Normal)
       if (abs(rotations[orientation] - rotations[tempDirection]) == 180) {
         if (ultrasonicMovement == 1) {
-          carDirections[lastCounter] = BackwardsMovement;
+          carDirections[lastCounter] = OneBackwardsUltrasonicMovement;
         } else if (ultrasonicMovement == 2) {
           carDirections[lastCounter] = TwoBackwardsUltrasonicMovement;
         } else if (ultrasonicMovement == 3) {
           carDirections[lastCounter] = ThreeBackwardsUltrasonicMovement;
         } else carDirections[lastCounter] = BackwardsMovement;
       } else if (ultrasonicMovement == 1) {
-        carDirections[lastCounter] = Movement;
+        carDirections[lastCounter] = OneUltrasonicMovement;
       } else if (ultrasonicMovement == 2) {
         carDirections[lastCounter] = TwoUltrasonicMovement;
       } else if (ultrasonicMovement == 3) {
@@ -276,6 +342,10 @@ void setup() {
     }
 
     currentDirection = startingDirection;
+
+    carDirections[lastCounter] = Default;
+
+    free(graph);
   }
 
   Serial.println();
@@ -297,7 +367,7 @@ void setup() {
 
     speed = 150;
 
-    delayTime = (targetTime - (((50/0.0394048)*totalMovement)/1000))/(totalMovement - 1 + totalRotations) * 1000;
+    delayTime = (targetTime - (((getTimeForDistance(50))*totalMovement)/1000))/(totalMovement - 1 + totalRotations) * 1000;
     if (delayTime < 0) {
       delayTime = 0;
     } else if (delayTime > 3000) { //If the delay time is over 3 seconds (will result in a penalty), bump it down to 2.5
@@ -319,19 +389,19 @@ void setup() {
 
     useUltrasonic = false;
 
+    debounceTime = 0;
+
     stepcount = 20.00;  // 20 Slots in disk, change if different
 
     wheeldiameter = 66.50; // Wheel diameter in millimeters, change if different
 
     MOTOR_FL = 18;
     MOTOR_FR = 19;
-    MOTOR_BL = 20;
-    MOTOR_BR = 21;
 
     counter_FL = 0;
     counter_FR = 0;
-    counter_BL = 0;
-    counter_BR = 0;
+
+    firstTime = false;
   }
 }
 
@@ -345,7 +415,6 @@ int CMtoSteps(float cm) {
   result = (int) f_result; // Convert to an integer (note this is NOT rounded)
 
   return result;  // End and return result
-
 }
 
 void turn(Directions direction) {
@@ -374,10 +443,15 @@ void turn(Directions direction) {
 
   bool turnDirection = Yaw < desiredYaw;
 
-  double m_kP = 0.35;
-  int lowerBound = 40;
+  double m_kP = 0.25;
+  int lowerBound = 50;
   int upperBound = 100;
+
+  //abs(Yaw - desiredYaw) > 0.3
+  currentTime = millis();
   while (abs(Yaw - desiredYaw) > 0.3) {
+    Serial.println(Yaw);
+
     int speed = lowerBound + abs((Yaw - desiredYaw) / m_kP);
 
     if (speed < lowerBound) {
@@ -430,11 +504,13 @@ void freeTurn(float degrees) {
 void loop() {
   ApplicationFunctionSet_ConquerorCarMotionControl(status, 150);
 
+  //Recalculate distance shit with fully charged batteries because I fucking forgot to push
+
   //Handling of Ultrasonic values
-  //Currently commented because it makes loop time super slow, which messes up encoder readings
+  //Currently commented because it makes loop time super slow, which messes up encoder readings <- turns out this was b/c the encoders were unplugged, which makes it slow for some reason
   {
-    // myUltrasonic.DeviceDriverSet_ULTRASONIC_1_Get(&ultraSonicDistance1);
-    // myUltrasonic.DeviceDriverSet_ULTRASONIC_2_Get(&ultraSonicDistance2);
+    myUltrasonic.DeviceDriverSet_ULTRASONIC_1_Get(&ultraSonicDistance1);
+    myUltrasonic.DeviceDriverSet_ULTRASONIC_2_Get(&ultraSonicDistance2);
 
     // if (abs(ultraSonicDistance1 - previousDistance1) > 20 && previousDistance1 != 0) {
     //   ultraSonicDistance1 = previousDistance1;
@@ -449,22 +525,34 @@ void loop() {
     // }
   }
 
-  if (carDirections[counter] == Default) return;
+  if (carDirections[counter] == Default) {
+    Serial.println("finished");
+    return;
+  }
 
   timer = millis();
 
   //Handling of calibrating stops
   {
     if (delayBool) {
+
       AppMPU6050getdata.MPU6050_dveGetEulerAngles(&Yaw);
       if (delayTime == 0) {
+
         previousDistance1 = 0;
         delayBool = false;
         counter++;
+
+        counter_FL = 0;
+        counter_FR = 0;
       } else if (abs(currentTime - timer) >= delayTime) {
+
         previousDistance1 = 0;
         counter++;
         delayBool = false;
+
+        counter_FL = 0;
+        counter_FR = 0;
       }
     }
   }
@@ -472,55 +560,37 @@ void loop() {
   //Handling of each individual car direction
   {
     if (counter != formerCounter && !delayBool) {
+
       formerCounter = counter;
       Directions direction = carDirections[counter];
       switch (direction) {
         case Movement:
-
-          previousDistance1 = ultraSonicDistance1;
-          previousDistance2 = ultraSonicDistance2;
-
           status = Forward;
           break;
         case OneUltrasonicMovement:
-          previousDistance1 = ultraSonicDistance1;
-          previousDistance2 = ultraSonicDistance2;
           useOtherUltrasonic = 1;
           status = Forward;
           break;
         case TwoUltrasonicMovement:
-          previousDistance1 = ultraSonicDistance1;
-          previousDistance2 = ultraSonicDistance2;
           useOtherUltrasonic = 2;
           status = Forward;
           break;
         case ThreeUltrasonicMovement:
-          previousDistance1 = ultraSonicDistance1;
-          previousDistance2 = ultraSonicDistance2;
           useOtherUltrasonic = 3;
           status = Forward;
           break;
         case BackwardsMovement:
-          previousDistance1 = ultraSonicDistance1;
-          previousDistance2 = ultraSonicDistance2;
-
           status = Backward;
           break;
         case OneBackwardsUltrasonicMovement:
-          previousDistance1 = ultraSonicDistance1;
-          previousDistance2 = ultraSonicDistance2;
           useOtherUltrasonic = 1;
           status = Backward;
           break;
         case TwoBackwardsUltrasonicMovement:
-          previousDistance1 = ultraSonicDistance1;
-          previousDistance2 = ultraSonicDistance2;
           useOtherUltrasonic = 2;
           status = Backward;
           break;
         case ThreeBackwardsUltrasonicMovement:
-          previousDistance1 = ultraSonicDistance1;
-          previousDistance2 = ultraSonicDistance2;
           useOtherUltrasonic = 3;
           status = Backward;
           break;
@@ -533,6 +603,10 @@ void loop() {
           break;
       }
 
+      counter_FL = 0;
+      counter_FR = 0;
+      previousDistance1 = ultraSonicDistance1;
+      previousDistance2 = ultraSonicDistance2;
       currentTime = millis();
     }
   }
@@ -541,50 +615,67 @@ void loop() {
   //Controls the distance depending on the instruction
   {
     if (status == Forward) {
-      if (counter == 0) {
-        distance = 36.388;
-        // distance = 50;
-      } else if (carDirections[counter + 1] == Default) {
-        distance = 38.612;
+      if (useOtherUltrasonic == 0) {
+        if (counter == 0) {
+          // distance = 36.388;
+          distance = 50;
+        } else if (carDirections[counter + 1] == Default) {
+          distance = 38.612;
+        } else {
+          distance = 50;
+        }
       } else {
-        distance = 50;
+        distance = 20;
       }
     } else if (status == Backward) {
-      distance = 50;
+      if (useOtherUltrasonic == 0) {
+        distance = 50;
+      } else {
+        distance = 20;
+      }
     }
   }
 
   //Instructs the robot when to stop
   {
     if (useOtherUltrasonic != 0 && !delayBool) {
-      if (status == Forward && counter_FL > CMtoSteps(distance) && counter_FR > CMtoSteps(distance)) {
-        status = stop_it;
-        finished = true;
-        delayBool = true;
-        currentTime = millis(); 
-        previousDistance1 = 0;
-        useOtherUltrasonic = 0;
+      if (status == Forward) {
+        if (ultraSonicDistance1 < distance) {
+          if (debounceTime == 0) {
+            debounceTime = millis();
+          } else if (abs(millis() - debounceTime) > 50) {
+            status = stop_it;
+            finished = true;
+            delayBool = true;
+            currentTime = millis(); 
+            previousDistance1 = 0;
+            useOtherUltrasonic = 0;
+            debounceTime = 0;
 
-        counter_FL = 0;
-        counter_FR = 0;
-        counter_BL = 0;
-        counter_BR = 0;
-      } else if (status == Backward && counter_FL > CMtoSteps(distance) && counter_FR > CMtoSteps(distance)) {
-        status = stop_it;
-        finished = true;
-        delayBool = true;
-        currentTime = millis(); 
-        previousDistance1 = 0;
-        useOtherUltrasonic = 0;
+            counter_FL = 0;
+            counter_FR = 0;
+          }
+        } else debounceTime = 0;
+      } else if (status == Backward && ultraSonicDistance2 < distance) {
+        if (ultraSonicDistance2 < distance) {
+          if (debounceTime == 0) {
+            debounceTime = millis();
+          } else if (abs(millis() - debounceTime) > 50) {
+            status = stop_it;
+            finished = true;
+            delayBool = true;
+            currentTime = millis(); 
+            previousDistance1 = 0;
+            useOtherUltrasonic = 0;
+            debounceTime = 0;
 
-        counter_FL = 0;
-        counter_FR = 0;
-        counter_BL = 0;
-        counter_BR = 0;
+            counter_FL = 0;
+            counter_FR = 0;
+          }
+        } else debounceTime = 0;
       }
     } else if (!delayBool) {
-      
-      if (counter_FL > CMtoSteps(distance) && counter_FR > CMtoSteps(distance)) {
+      if (abs(millis() - currentTime) > getTimeForDistance(distance)) {
 
         status = stop_it;
         finished = true;
@@ -595,8 +686,6 @@ void loop() {
 
         counter_FL = 0;
         counter_FR = 0;
-        counter_BL = 0;
-        counter_BR = 0;
       }
     }
   }
