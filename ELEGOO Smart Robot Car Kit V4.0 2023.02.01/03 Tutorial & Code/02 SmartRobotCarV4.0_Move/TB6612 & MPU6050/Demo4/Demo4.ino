@@ -617,6 +617,7 @@ void loop() {
     if (status == Forward) {
       if (useOtherUltrasonic == 0) {
         if (counter == 0) {
+          //Change this to the correct value once actually running on the correct field
           // distance = 36.388;
           distance = 50;
         } else if (carDirections[counter + 1] == Default) {
@@ -675,8 +676,7 @@ void loop() {
         } else debounceTime = 0;
       }
     } else if (!delayBool) {
-      if (abs(millis() - currentTime) > getTimeForDistance(distance)) {
-
+      if (counter_FL > CMtoSteps(distance) && counter_FR > CMtoSteps(distance)) {
         status = stop_it;
         finished = true;
         delayBool = true;
