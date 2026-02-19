@@ -1,5 +1,4 @@
 #include <avr/wdt.h>
-#include <PID_v1.h>
 #include "DeviceDriverSet_xxx0.h"
 #include "ApplicationFunctionSet_xxx0.cpp"
 #include "test.cpp"
@@ -92,11 +91,6 @@ float stepcount = 20.00;  // 20 Slots in disk, change if different
 
 // Constant for wheel diameter
 float wheeldiameter = 66.50; // Wheel diameter in millimeters, change if different
-
-
-//Change the node-to-node array here
-byte pathArray[] = {0, 1, 2, 3}; 
-int pathLength = 4; //Change this to match the length of the path array
 
 //Optical Interruptor Pins
 byte MOTOR_FL = 18;
@@ -509,8 +503,8 @@ void loop() {
   //Handling of Ultrasonic values
   //Currently commented because it makes loop time super slow, which messes up encoder readings <- turns out this was b/c the encoders were unplugged, which makes it slow for some reason
   {
-    myUltrasonic.DeviceDriverSet_ULTRASONIC_1_Get(&ultraSonicDistance1);
-    myUltrasonic.DeviceDriverSet_ULTRASONIC_2_Get(&ultraSonicDistance2);
+    // myUltrasonic.DeviceDriverSet_ULTRASONIC_1_Get(&ultraSonicDistance1);
+    // myUltrasonic.DeviceDriverSet_ULTRASONIC_2_Get(&ultraSonicDistance2);
 
     // if (abs(ultraSonicDistance1 - previousDistance1) > 20 && previousDistance1 != 0) {
     //   ultraSonicDistance1 = previousDistance1;
@@ -676,7 +670,9 @@ void loop() {
         } else debounceTime = 0;
       }
     } else if (!delayBool) {
-      if (counter_FL > CMtoSteps(distance) && counter_FR > CMtoSteps(distance)) {
+      Serial.println(counter_FL);
+
+      if (counter_FL > CMtoSteps(distance)) {
         status = stop_it;
         finished = true;
         delayBool = true;
